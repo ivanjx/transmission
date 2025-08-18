@@ -236,6 +236,24 @@ export class Transmission extends EventTarget {
       torrent_list: document.querySelector('#torrent-list'),
     };
 
+    const context_menu = () => {
+      // open context menu
+      const popup = new ContextMenu(this.action_manager);
+      this.setCurrentPopup(popup);
+
+      const boundingElement = document.querySelector('#torrent-container');
+      const bounds = boundingElement.getBoundingClientRect();
+      const x = Math.min(
+        this.pointer_device.x,
+        bounds.right + globalThis.scrollX - popup.root.clientWidth,
+      );
+      const y = Math.min(
+        this.pointer_device.y,
+        bounds.bottom + globalThis.scrollY - popup.root.clientHeight,
+      );
+      popup.root.style.left = `${Math.max(x, 0)}px`;
+      popup.root.style.top = `${Math.max(y, 0)}px`;
+    };
     // Setup clusterize for virtual scrolling
     this._initializeClusterize();
 
@@ -266,6 +284,9 @@ export class Transmission extends EventTarget {
     // Set up click handling for torrent rows via event delegation
     this.elements.torrent_list.addEventListener('click', this._onRowClicked.bind(this));
 
+    // Set up click handling for torrent rows via event delegation
+    this.elements.torrent_list.addEventListener('click', this._onRowClicked.bind(this));
+
     // Get preferences & torrents from the daemon
     this.loadDaemonPrefs();
     this._initializeTorrents();
@@ -285,6 +306,7 @@ export class Transmission extends EventTarget {
   _initializeClusterize() {
     // Initialize clusterize.js for virtual scrolling
     this.clusterize = new Clusterize({
+      blocks_in_cluster: 6, // Increase from default 4 for better scrolling
       callbacks: {
         clusterChanged: () => {
           // Update selections on newly rendered rows
@@ -295,6 +317,7 @@ export class Transmission extends EventTarget {
       no_data_class: 'clusterize-no-data',
       no_data_text: 'No torrents',
       rows: ['<li class="clusterize-no-data">Loading torrents...</li>'],
+      rows_in_block: 50, // Keep default but make explicit
       scrollId: 'torrent-container',
       show_no_data_row: true,
       tag: 'li',
@@ -1213,6 +1236,13 @@ TODO: fix this when notifications get fixed
       this.clusterize.update(['<li class="clusterize-no-data">No torrents</li>']);
     } else {
       this.clusterize.update(rowsHTML);
+    }
+
+    // Force refresh to recalculate row heights for large lists
+    if (rowsHTML.length > 1000) {
+      setTimeout(() => {
+        this.clusterize.refresh(true);
+      }, 50);
     }
 
     // Clear dirty torrents set
