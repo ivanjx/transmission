@@ -284,9 +284,6 @@ export class Transmission extends EventTarget {
     // Set up click handling for torrent rows via event delegation
     this.elements.torrent_list.addEventListener('click', this._onRowClicked.bind(this));
 
-    // Set up click handling for torrent rows via event delegation
-    this.elements.torrent_list.addEventListener('click', this._onRowClicked.bind(this));
-
     // Get preferences & torrents from the daemon
     this.loadDaemonPrefs();
     this._initializeTorrents();
