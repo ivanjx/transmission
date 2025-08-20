@@ -161,7 +161,7 @@ export class OverflowMenu extends EventTarget {
 
     let label = document.createElement('label');
     label.id = 'refresh-rate-label';
-    label.textContent = 'Refresh Rate (s)';
+    label.textContent = 'Refresh rate (s)';
     div.append(label);
 
     const refreshInput = document.createElement('input');
