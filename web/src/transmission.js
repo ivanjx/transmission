@@ -225,24 +225,6 @@ export class Transmission extends EventTarget {
       torrent_list: document.querySelector('#torrent-list'),
     };
 
-    const context_menu = () => {
-      // open context menu
-      const popup = new ContextMenu(this.action_manager);
-      this.setCurrentPopup(popup);
-
-      const boundingElement = document.querySelector('#torrent-container');
-      const bounds = boundingElement.getBoundingClientRect();
-      const x = Math.min(
-        this.pointer_device.x,
-        bounds.right + globalThis.scrollX - popup.root.clientWidth,
-      );
-      const y = Math.min(
-        this.pointer_device.y,
-        bounds.bottom + globalThis.scrollY - popup.root.clientHeight,
-      );
-      popup.root.style.left = `${Math.max(x, 0)}px`;
-      popup.root.style.top = `${Math.max(y, 0)}px`;
-    };
     // Setup clusterize for virtual scrolling
     this._initializeClusterize();
 
@@ -346,8 +328,8 @@ export class Transmission extends EventTarget {
       },
       contentId: 'torrent-list',
       no_data_class: 'clusterize-no-data',
-      no_data_text: 'No torrents',
-      rows: ['<li class="clusterize-no-data">Loading torrents...</li>'],
+      no_data_text: '',
+      rows: ['<li class="clusterize-no-data"></li>'],
       rows_in_block: 50, // Keep default but make explicit
       scrollId: 'torrent-container',
       show_no_data_row: true,
@@ -584,14 +566,6 @@ export class Transmission extends EventTarget {
     );
   }
 
-  _scrollToTorrent(torrentId) {
-    // Find the DOM element for this torrent and scroll to it
-    const element = this.elements.torrent_list.querySelector(`[data-torrent-id="${torrentId}"]`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-
   // Select a range from this row to the last clicked torrent
   _selectRange(row) {
     // Convert row to torrent ID and use new implementation
@@ -737,9 +711,17 @@ export class Transmission extends EventTarget {
           }
         }
         if (torrent) {
-          this._last_torrent_clicked = torrent.getId();
-          this._scrollToTorrent(torrent.getId());
           event_.preventDefault();
+          this._last_torrent_clicked = torrent.getId();
+          const rowElem = Array.from(this.elements.torrent_list.children).find(
+            (element) => Number.parseInt(element.dataset.torrentId, 10) === torrent.getId()
+          );
+          if (rowElem) {
+            rowElem.scrollIntoView({
+              block: 'nearest',
+              inline: 'nearest'
+            });
+          }
         }
       } else if (shift_key) {
         this._shift_index = this._indexOfLastTorrent();
@@ -1193,7 +1175,7 @@ TODO: fix this when notifications get fixed
 
     // Update clusterize with new data
     if (rowsHTML.length === 0) {
-      this.clusterize.update(['<li class="clusterize-no-data">No torrents</li>']);
+      this.clusterize.update(['<li class="clusterize-no-data"></li>']);
     } else {
       this.clusterize.update(rowsHTML);
     }
