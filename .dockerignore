@@ -1,0 +1,58 @@
+# Ignore build output
+build/
+
+# Ignore binaries and object files
+*.o
+*.so
+*.a
+*.exe
+*.dll
+*.lib
+*.out
+*.app
+*.dSYM/
+
+# Ignore CMake and build system files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Ignore version control
+.git
+.gitmodules
+.gitignore
+
+# Ignore documentation and markdown previews
+*.md
+
+# Ignore test output
+*.log
+*.test
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore Docker files that shouldn't be copied
+Dockerfile
+*.dockerignore
+
+# Ignore other system files
+Thumbs.db
+.DS_Store
+
+# Ignore Android build output
+android/build/
+
+# Ignore node_modules if present
+node_modules/
