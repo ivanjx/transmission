@@ -17,8 +17,6 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
       - name: 'Login to GitHub Container Registry'
         uses: docker/login-action@v3
         with:
@@ -29,7 +27,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/main/Dockerfile
+          file: Dockerfile
           platforms: linux/amd64
           push: true
           tags: ghcr.io/ivanjx/transmission:testing
