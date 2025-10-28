@@ -6,19 +6,8 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
-    pkg-config \
     libssl-dev \
     libcurl4-openssl-dev \
-    libevent-dev \
-    zlib1g-dev \
-    libminiupnpc-dev \
-    libsystemd-dev \
-    ca-certificates \
-    python3 \
-    python3-pip \
-    rsass \
-    perl \
-    esbuild \
     curl
 
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -29,7 +18,7 @@ WORKDIR /build
 COPY . /build
 
 # Build Transmission (daemon and web client)
-RUN cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DENABLE_DAEMON=ON -DENABLE_WEB=ON -DREBUILD_WEB=ON
+RUN cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DENABLE_DAEMON=ON -DENABLE_WEB=ON -DREBUILD_WEB=ON -DWITH_SYSTEMD=OFF -DENABLE_NLS=OFF -DINSTALL_DOC=OFF
 RUN cmake --build build-release --target transmission-daemon transmission-web -j $(nproc)
 
 # Final image for running Transmission daemon and web client
@@ -39,9 +28,6 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y \
     libssl3 \
     libcurl4 \
-    libevent-2.1-7 \
-    zlib1g \
-    libminiupnpc17 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy built binaries from builder
