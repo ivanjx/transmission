@@ -30,7 +30,7 @@ COPY . /build
 
 # Build Transmission (daemon and web client)
 RUN cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DENABLE_DAEMON=ON -DENABLE_WEB=ON -DREBUILD_WEB=ON \
-    && cmake --build build-release --target transmission-daemon transmission-web -- -j$(nproc)
+    && cmake --build build-release --target transmission-daemon transmission-web
 
 # Final image for running Transmission daemon and web client
 FROM ubuntu:24.04
