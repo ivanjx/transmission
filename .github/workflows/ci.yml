@@ -23,9 +23,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create version file
-        run: make version
-        shell: bash
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
