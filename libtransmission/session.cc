@@ -678,6 +678,27 @@ size_t tr_session::count_queue_free_slots(tr_direction dir) const noexcept
     return max - active_count;
 }
 
+void tr_session::restart_stalled_torrents(tr_direction dir)
+{
+    auto const stalled_timeout_secs = queueStalledMinutes() * 60;
+    auto const now = tr_time();
+    for (auto* const tor : torrents())
+    {
+        // is it the right activity?
+        if (tor->activity() == (dir == TR_UP ? TR_STATUS_SEED : TR_STATUS_DOWNLOAD))
+        {
+            // is it stalled?
+            auto const idle_seconds = tor->idle_seconds(now);
+            if (idle_seconds && *idle_seconds >= stalled_timeout_secs)
+            {
+                // restart to move it to the back of the queue
+                tr_torrentStop(tor);
+                tr_torrentStart(tor);
+            }
+        }
+    }
+}
+
 void tr_session::on_queue_timer()
 {
     using namespace queue_helpers;
@@ -687,6 +708,11 @@ void tr_session::on_queue_timer()
         if (!queueEnabled(dir))
         {
             continue;
+        }
+
+        if (queueStalledEnabled())
+        {
+            restart_stalled_torrents(dir);
         }
 
         auto const n_wanted = count_queue_free_slots(dir);
