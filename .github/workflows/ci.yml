@@ -31,5 +31,3 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ghcr.io/ivanjx/transmission:testing
-          cache-to: type=registry,ref=ghcr.io/ivanjx/transmission:cache,mode=max
-          cache-from: type=registry,ref=ghcr.io/ivanjx/transmission:cache
