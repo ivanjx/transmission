@@ -1,43 +1,58 @@
-# Dockerfile for Transmission release build (daemon + web client)
-# Use official Ubuntu LTS as base
-FROM ubuntu:24.04
+FROM docker.io/alpine:3.22 AS base
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    libssl-dev \
-    libcurl4-openssl-dev \
-    curl
+FROM base AS builder
 
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs
+RUN set -ex && \
+	apk add --no-cache --upgrade \
+		git \
+		python3 \
+		build-base \
+		cmake \
+		curl-dev \
+		gettext-dev \
+		openssl-dev \
+		linux-headers \
+		samurai \
+        nodejs \
+        npm
 
-# Set working directory
-WORKDIR /build
-COPY . /build
+COPY . .
 
-# Build Transmission (daemon and web client)
-RUN cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DENABLE_DAEMON=ON -DENABLE_WEB=ON -DREBUILD_WEB=ON -DWITH_SYSTEMD=OFF -DENABLE_NLS=OFF -DINSTALL_DOC=OFF
-RUN cmake --build build-release --target transmission-daemon transmission-web -j $(nproc)
+RUN cmake \
+			-S . \
+			-B obj \
+			-G Ninja \
+			-D CMAKE_BUILD_TYPE=Release \
+			-D ENABLE_CLI=OFF \
+			-D ENABLE_DAEMON=ON \
+			-D ENABLE_GTK=OFF \
+			-D ENABLE_MAC=OFF \
+			-D ENABLE_QT=OFF \
+			-D ENABLE_TESTS=OFF \
+			-D ENABLE_UTILS=OFF \
+			-D ENABLE_UTP=ON \
+			-D ENABLE_WERROR=OFF \
+			-D ENABLE_DEPRECATED=OFF \
+			-D ENABLE_NLS=ON \
+			-D INSTALL_WEB=ON \
+			-D REBUILD_WEB=ON \
+			-D INSTALL_DOC=OFF \
+			-D INSTALL_LIB=OFF \
+			-D RUN_CLANG_TIDY=OFF \
+			-D WITH_INOTIFY=ON \
+			-D WITH_CRYPTO="openssl" \
+			-D WITH_SYSTEMD=OFF && \
+    cmake --build obj --config Release; \
+    cmake --build obj --config Release --target install/strip
 
-# Final image for running Transmission daemon and web client
-FROM ubuntu:24.04
+FROM base AS runtime
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libssl3 \
-    libcurl4 \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -ex && \
+    apk update && \
+    apk add --no-cache --upgrade libcurl libintl libgcc libstdc++
 
-# Copy built binaries from builder
-COPY --from=0 /build/build-release/daemon/transmission-daemon /usr/local/bin/transmission-daemon
-COPY --from=0 /build/build-release/web/public_html /usr/local/share/transmission/web
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/local/share /usr/local/share
 
-# Default settings
-ENV TRANSMISSION_WEB_HOME=/usr/local/share/transmission/web
-COPY settings.json /config/settings.json
-
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/transmission-daemon"]
-CMD ["--foreground", "--config-dir", "/config"]
+ENTRYPOINT [ "transmission-daemon" ]
+CMD [ "--config-dir", "/config", "--foreground" ]
