@@ -168,7 +168,7 @@ export class Torrent extends EventTarget {
     return this.fields.id;
   }
   getLabels() {
-    return this.fields.labels.sort();
+    return this.fields.labels.toSorted();
   }
   getLastActivity() {
     return this.fields.activityDate;
