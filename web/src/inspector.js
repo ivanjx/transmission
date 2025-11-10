@@ -6,7 +6,7 @@
 import { FileRow } from './file-row.js';
 import { Formatter } from './formatter.js';
 import { Torrent } from './torrent.js';
-import { Utils, createTextualTabsContainer, setTextContent } from './utils.js';
+import { Utils, createTextualTabsContainer, setHTMLContent, setTextContent } from './utils.js';
 
 const peer_column_classes = [
   'encryption',
@@ -636,7 +636,9 @@ export class Inspector extends EventTarget {
       },
       (peer, td) => {
         Inspector._fetchCountryCode(peer.address).then(countryCode => {
-          setTextContent(td, countryCode || '');
+          if (countryCode) {
+            setHTMLContent(td, `<img src="https://flagcdn.com/w20/${countryCode.toLowerCase()}.png" alt="${countryCode}" />`);
+          }
           td.setAttribute('title', countryCode ? `Country: ${countryCode}` : '');
         }).catch(() => {
           setTextContent(td, '');

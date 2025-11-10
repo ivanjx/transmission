@@ -365,3 +365,9 @@ export function setTextContent(e, text) {
     e.textContent = text;
   }
 }
+
+export function setHTMLContent(e, html) {
+  if (e.innerHTML !== html) {
+    e.innerHTML = html;
+  }
+}
