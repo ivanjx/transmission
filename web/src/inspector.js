@@ -15,10 +15,14 @@ const peer_column_classes = [
   'percent-done',
   'status',
   'peer-address',
+  'peer-country',
   'peer-app-name',
 ];
 
 export class Inspector extends EventTarget {
+  // Simple cache for IP -> country code mappings
+  static _countryCache = new Map();
+
   constructor(controller) {
     super();
 
@@ -142,7 +146,7 @@ export class Inspector extends EventTarget {
     table.classList.add('peer-list');
     const thead = document.createElement('thead');
     const tr = document.createElement('tr');
-    const names = ['', 'Up', 'Down', 'Done', 'Status', 'Address', 'Client'];
+    const names = ['', 'Up', 'Down', 'Done', 'Status', 'Address', '🌍', 'Client'];
     for (const [index, name] of names.entries()) {
       const th = document.createElement('th');
       const classname = peer_column_classes[index];
@@ -631,6 +635,15 @@ export class Inspector extends EventTarget {
         td.setAttribute('title', peer.address);
       },
       (peer, td) => {
+        Inspector._fetchCountryCode(peer.address).then(countryCode => {
+          setTextContent(td, countryCode || '');
+          td.setAttribute('title', countryCode ? `Country: ${countryCode}` : '');
+        }).catch(() => {
+          setTextContent(td, '');
+          td.setAttribute('title', '');
+        });
+      },
+      (peer, td) => {
         setTextContent(td, peer.clientName);
         td.setAttribute('title', peer.clientName);
       },
@@ -980,6 +993,35 @@ export class Inspector extends EventTarget {
       for (const row of file_rows) {
         row.refresh();
       }
+    }
+  }
+
+  static async _fetchCountryCode(ip) {
+    try {
+      // Check cache first
+      if (Inspector._countryCache.has(ip)) {
+        return Inspector._countryCache.get(ip);
+      }
+
+      // Use api.country.is API to get country code
+      const response = await fetch(`https://api.country.is/${ip}`);
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const countryCode = data.country || null;
+
+      // Cache the result (only if we got a valid response)
+      if (countryCode) {
+        Inspector._countryCache.set(ip, countryCode);
+      }
+
+      return countryCode;
+    }
+    catch (error) {
+      return null;
     }
   }
 }

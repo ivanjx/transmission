@@ -441,7 +441,7 @@ a {
   overflow: auto;
   padding: 0;
   right: 0;
-  
+
   // Override clusterize default max-height
   &.clusterize-scroll {
     max-height: none;
@@ -1187,17 +1187,22 @@ a {
 
   .speed-down,
   .speed-up {
-    width: 15%;
+    width: 10%;
   }
 
   .peer-address {
-    width: 25%;
+    width: 30%;
     overflow-x: hidden;
     text-overflow: ellipsis;
 
     @include viewport-small {
       text-align: left;
     }
+  }
+
+  .peer-country {
+    text-align: center;
+    width: 5%;
   }
 
   .peer-app-name {
