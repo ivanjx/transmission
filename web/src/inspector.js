@@ -15,8 +15,8 @@ const peer_column_classes = [
   'percent-done',
   'status',
   'peer-address',
-  'peer-country',
   'peer-app-name',
+  'peer-country',
 ];
 
 export class Inspector extends EventTarget {
@@ -146,7 +146,7 @@ export class Inspector extends EventTarget {
     table.classList.add('peer-list');
     const thead = document.createElement('thead');
     const tr = document.createElement('tr');
-    const names = ['', 'Up', 'Down', 'Done', 'Status', 'Address', '🌍', 'Client'];
+    const names = ['', 'Up', 'Down', 'Done', 'Status', 'Address', 'Client', '🌍'];
     for (const [index, name] of names.entries()) {
       const th = document.createElement('th');
       const classname = peer_column_classes[index];
@@ -635,6 +635,10 @@ export class Inspector extends EventTarget {
         td.setAttribute('title', peer.address);
       },
       (peer, td) => {
+        setTextContent(td, peer.clientName);
+        td.setAttribute('title', peer.clientName);
+      },
+      (peer, td) => {
         Inspector._fetchCountryCode(peer.address).then(countryCode => {
           if (countryCode) {
             setHTMLContent(td, `<img src="https://flagcdn.com/w20/${countryCode.toLowerCase()}.png" alt="${countryCode}" />`);
@@ -644,10 +648,6 @@ export class Inspector extends EventTarget {
           setTextContent(td, '');
           td.setAttribute('title', '');
         });
-      },
-      (peer, td) => {
-        setTextContent(td, peer.clientName);
-        td.setAttribute('title', peer.clientName);
       },
     ];
 
