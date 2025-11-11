@@ -1162,7 +1162,7 @@ a {
     color: var(--color-fg-primary);
     font-weight: bolder;
     overflow-x: hidden;
-    padding: 10px;
+    padding: 5px 2px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1174,7 +1174,6 @@ a {
     width: 10px;
   }
 
-  .peer-address,
   .percent-done,
   .speed-down,
   .speed-up {
@@ -1182,39 +1181,53 @@ a {
   }
 
   .percent-done {
-    width: 10%;
+    width: 2rem;
   }
 
   .speed-down,
   .speed-up {
-    width: 15%;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 3.5rem;
   }
 
   .peer-address {
-    width: 30%;
+    width: 40%;
     overflow-x: hidden;
     text-overflow: ellipsis;
 
     @include viewport-small {
-      text-align: left;
+      width: 100%;
     }
-  }
-
-  .peer-country {
-    text-align: center;
-    width: 10%;
   }
 
   .peer-app-name {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 20%;
+    width: 40%;
+
+    @include viewport-small {
+      display: none;
+    }
+  }
+
+  .peer-country {
+    text-align: center;
+    width: 2rem;
   }
 
   .status {
     cursor: pointer;
-    width: 10%;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 20%;
+
+    @include viewport-small {
+      display: none;
+    }
   }
 }
 
