@@ -1193,7 +1193,7 @@ a {
   }
 
   .peer-address {
-    width: 40%;
+    width: 45%;
     overflow-x: hidden;
     text-overflow: ellipsis;
 
@@ -1206,7 +1206,7 @@ a {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 40%;
+    width: 55%;
 
     @include viewport-small {
       display: none;
@@ -1223,7 +1223,7 @@ a {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 20%;
+    width: 1.8rem;
 
     @include viewport-small {
       display: none;
