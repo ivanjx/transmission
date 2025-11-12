@@ -20,6 +20,9 @@ const peer_column_classes = [
 ];
 
 export class Inspector extends EventTarget {
+  // Simple cache for IP -> country code mappings
+  static _countryCache = new Map();
+
   constructor(controller) {
     super();
 
@@ -997,7 +1000,13 @@ export class Inspector extends EventTarget {
 
   static async _fetchCountryCode(ip) {
     try {
-      const response = await fetch(`https://api.country.is/${ip}`); // has caching
+      // Check cache first
+      if (Inspector._countryCache.has(ip)) {
+        return Inspector._countryCache.get(ip);
+      }
+
+      // Use api.country.is API to get country code
+      const response = await fetch(`https://api.country.is/${ip}`);
 
       if (!response.ok) {
         return null;
@@ -1005,6 +1014,12 @@ export class Inspector extends EventTarget {
 
       const data = await response.json();
       const countryCode = data.country || null;
+
+      // Cache the result (only if we got a valid response)
+      if (countryCode) {
+        Inspector._countryCache.set(ip, countryCode);
+      }
+
       return countryCode;
     }
     catch (error) {
