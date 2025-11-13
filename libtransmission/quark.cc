@@ -226,6 +226,7 @@ auto constexpr MyStatic = std::array<std::string_view, TR_N_KEYS>{
     "peer-congestion-algorithm"sv,
     "peer-limit"sv,
     "peer-limit-global"sv,
+    "peer-limit-global-seeding"sv,
     "peer-limit-per-torrent"sv,
     "peer-port"sv,
     "peer-port-random-high"sv,

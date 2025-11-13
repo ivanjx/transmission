@@ -139,6 +139,8 @@ inline auto constexpr TrDefaultPeerPort = 51413U;
 #define TR_DEFAULT_PEER_SOCKET_TOS_STR "le"
 #define TR_DEFAULT_PEER_LIMIT_GLOBAL_STR "200"
 inline auto constexpr TrDefaultPeerLimitGlobal = 200U;
+#define TR_DEFAULT_PEER_LIMIT_GLOBAL_SEEDING_STR "200"
+inline auto constexpr TrDefaultPeerLimitGlobalSeeding = 200U;
 #define TR_DEFAULT_PEER_LIMIT_TORRENT_STR "50"
 inline auto constexpr TrDefaultPeerLimitTorrent = 50U;
 
@@ -551,6 +553,9 @@ void tr_sessionSetIdleLimit(tr_session* session, uint16_t idle_minutes);
 
 uint16_t tr_sessionGetPeerLimit(tr_session const* session);
 void tr_sessionSetPeerLimit(tr_session* session, uint16_t max_global_peers);
+
+uint16_t tr_sessionGetPeerLimitGlobalSeeding(tr_session const* session);
+void tr_sessionSetPeerLimitGlobalSeeding(tr_session* session, uint16_t max_global_seeding_peers);
 
 uint16_t tr_sessionGetPeerLimitPerTorrent(tr_session const* session);
 void tr_sessionSetPeerLimitPerTorrent(tr_session* session, uint16_t max_peers);

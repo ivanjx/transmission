@@ -422,6 +422,7 @@ public:
         size_t download_queue_size = 5U;
         size_t idle_seeding_limit_minutes = 30U;
         size_t peer_limit_global = TrDefaultPeerLimitGlobal;
+        size_t peer_limit_global_seeding = TrDefaultPeerLimitGlobalSeeding;
         size_t peer_limit_per_torrent = TrDefaultPeerLimitTorrent;
         size_t queue_stalled_minutes = 30U;
         size_t reqq = 2000U;
@@ -478,6 +479,7 @@ public:
                 { TR_KEY_message_level, &log_level },
                 { TR_KEY_peer_congestion_algorithm, &peer_congestion_algorithm },
                 { TR_KEY_peer_limit_global, &peer_limit_global },
+                { TR_KEY_peer_limit_global_seeding, &peer_limit_global_seeding },
                 { TR_KEY_peer_limit_per_torrent, &peer_limit_per_torrent },
                 { TR_KEY_peer_port, &peer_port },
                 { TR_KEY_peer_port_random_high, &peer_port_random_high },
@@ -727,6 +729,11 @@ public:
     [[nodiscard]] constexpr auto peerLimit() const noexcept
     {
         return settings().peer_limit_global;
+    }
+
+    [[nodiscard]] constexpr auto peerLimitGlobalSeeding() const noexcept
+    {
+        return settings().peer_limit_global_seeding;
     }
 
     [[nodiscard]] constexpr auto peerLimitPerTorrent() const noexcept
@@ -1216,6 +1223,7 @@ private:
     friend void tr_sessionSetLPDEnabled(tr_session* session, bool enabled);
     friend void tr_sessionSetPaused(tr_session* session, bool is_paused);
     friend void tr_sessionSetPeerLimit(tr_session* session, uint16_t max_global_peers);
+    friend void tr_sessionSetPeerLimitGlobalSeeding(tr_session* session, uint16_t max_global_seeding_peers);
     friend void tr_sessionSetPeerLimitPerTorrent(tr_session* session, uint16_t max_peers);
     friend void tr_sessionSetPeerPort(tr_session* session, uint16_t hport);
     friend void tr_sessionSetPeerPortRandomOnStart(tr_session* session, bool random);

@@ -1297,6 +1297,20 @@ uint16_t tr_sessionGetPeerLimitPerTorrent(tr_session const* session)
     return session->peerLimitPerTorrent();
 }
 
+void tr_sessionSetPeerLimitGlobalSeeding(tr_session* session, uint16_t max_global_seeding_peers)
+{
+    TR_ASSERT(session != nullptr);
+
+    session->settings_.peer_limit_global_seeding = max_global_seeding_peers;
+}
+
+uint16_t tr_sessionGetPeerLimitGlobalSeeding(tr_session const* session)
+{
+    TR_ASSERT(session != nullptr);
+
+    return session->peerLimitGlobalSeeding();
+}
+
 // ---
 
 void tr_sessionSetPaused(tr_session* session, bool is_paused)

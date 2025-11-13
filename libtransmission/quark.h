@@ -228,6 +228,7 @@ enum // NOLINT(performance-enum-size)
     TR_KEY_peer_congestion_algorithm,
     TR_KEY_peer_limit,
     TR_KEY_peer_limit_global,
+    TR_KEY_peer_limit_global_seeding,
     TR_KEY_peer_limit_per_torrent,
     TR_KEY_peer_port,
     TR_KEY_peer_port_random_high,

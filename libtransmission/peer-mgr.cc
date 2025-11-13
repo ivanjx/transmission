@@ -2354,28 +2354,37 @@ void enforceSwarmPeerLimit(tr_swarm* swarm, size_t max)
     std::for_each(std::begin(peers), std::end(peers), close_peer);
 }
 
-void enforceSessionPeerLimit(size_t global_peer_limit, tr_torrents& torrents)
+void enforceSessionPeerLimit(size_t global_peer_limit, size_t global_peer_limit_seeding, tr_torrents& torrents)
 {
-    // if we're under the limit, then no action needed
-    auto const current_size = tr_peerMsgs::size();
-    if (current_size <= global_peer_limit)
-    {
-        return;
-    }
+    // group peers
+    auto all_peers = std::vector<tr_peerMsgs*>{};
+    auto seeding_peers = std::vector<tr_peerMsgs*>{};
 
-    // make a list of all the peers
-    auto peers = std::vector<tr_peerMsgs*>{};
-    peers.reserve(current_size);
     for (auto const* const tor : torrents)
     {
-        peers.insert(std::end(peers), std::begin(tor->swarm->peers), std::end(tor->swarm->peers));
+        for (auto* const peer : tor->swarm->peers)
+        {
+            if (peer->is_active(TR_UP))
+            {
+                seeding_peers.push_back(peer);
+            }
+        }
+
+        all_peers.insert(std::end(all_peers), std::begin(tor->swarm->peers), std::end(tor->swarm->peers));
     }
 
-    TR_ASSERT(current_size == std::size(peers));
-    if (std::size(peers) > global_peer_limit)
+    // enforce global peer limit
+    if (std::size(all_peers) > global_peer_limit)
     {
-        std::partial_sort(std::begin(peers), std::begin(peers) + global_peer_limit, std::end(peers), ComparePeerByMostActive);
-        std::for_each(std::begin(peers) + global_peer_limit, std::end(peers), close_peer);
+        std::partial_sort(std::begin(all_peers), std::begin(all_peers) + global_peer_limit, std::end(all_peers), ComparePeerByMostActive);
+        std::for_each(std::begin(all_peers) + global_peer_limit, std::end(all_peers), close_peer);
+    }
+
+    // enforce seeding peer limit
+    if (std::size(seeding_peers) > global_peer_limit_seeding)
+    {
+        std::partial_sort(std::begin(seeding_peers), std::begin(seeding_peers) + global_peer_limit_seeding, std::end(seeding_peers), ComparePeerByMostActive);
+        std::for_each(std::begin(seeding_peers) + global_peer_limit_seeding, std::end(seeding_peers), close_peer);
     }
 }
 } // namespace disconnect_helpers
@@ -2414,7 +2423,7 @@ void tr_peerMgr::reconnect_pulse()
     }
 
     // if we're over the per-session peer limits, cull some peers
-    enforceSessionPeerLimit(session->peerLimit(), torrents_);
+    enforceSessionPeerLimit(session->peerLimit(), session->peerLimitGlobalSeeding(), torrents_);
 
     // try to make new peer connections
     make_new_peer_connections();
