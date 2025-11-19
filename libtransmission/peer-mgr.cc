@@ -2681,7 +2681,7 @@ namespace connect_helpers
     return score;
 }
 
-void get_peer_candidates(size_t global_peer_limit, tr_torrents& torrents, tr_peerMgr::OutboundCandidates& setme)
+void get_peer_candidates(size_t global_peer_limit, size_t global_peer_limit_seeding, tr_torrents& torrents, tr_peerMgr::OutboundCandidates& setme)
 {
     struct peer_candidate
     {
@@ -2713,6 +2713,15 @@ void get_peer_candidates(size_t global_peer_limit, tr_torrents& torrents, tr_pee
     auto candidates = std::vector<peer_candidate>{};
     candidates.reserve(tr_peer_info::known_connectable_count());
 
+    auto seeding_peers_count = size_t{ 0 };
+    for (auto const* const tor : torrents)
+    {
+        if (tor->is_done())
+        {
+            seeding_peers_count += tor->swarm->peerCount();
+        }
+    }
+
     /* populate the candidate array */
     auto salter = tr_salt_shaker{};
     for (auto* const tor : torrents)
@@ -2740,6 +2749,12 @@ void get_peer_candidates(size_t global_peer_limit, tr_torrents& torrents, tr_pee
 
         /* if we've already got enough speed in this torrent... */
         if (seeding && tor->bandwidth().is_maxed_out(TR_UP, now_msec))
+        {
+            continue;
+        }
+
+        /* if we've already got enough seeding peers in the session... */
+        if (seeding && seeding_peers_count >= global_peer_limit_seeding)
         {
             continue;
         }
@@ -2830,7 +2845,7 @@ void tr_peerMgr::make_new_peer_connections()
     auto& candidates = outbound_candidates_;
     if (std::empty(candidates))
     {
-        get_peer_candidates(session->peerLimit(), torrents_, candidates);
+        get_peer_candidates(session->peerLimit(), session->peerLimitGlobalSeeding(), torrents_, candidates);
     }
 
     // initiate connections to the last N candidates
