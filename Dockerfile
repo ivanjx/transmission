@@ -49,7 +49,7 @@ FROM base AS runtime
 
 RUN set -ex && \
     apk update && \
-    apk add --no-cache --upgrade libcurl libintl libgcc libstdc++
+    apk add --no-cache --upgrade libcurl libintl libgcc libstdc++ tzdata
 
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/local/share /usr/local/share
