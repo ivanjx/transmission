@@ -165,11 +165,7 @@ export class ContextMenu extends EventTarget {
 
     if (this.menu_items) {
       for (const item of this.menu_items) {
-        if (item) {
-          root.append(new_item(item));
-        } else {
-          root.append(new_separator());
-        }
+        root.append(item ? new_item(item) : new_separator());
       }
     } else {
       root.append(

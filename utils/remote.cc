@@ -168,7 +168,7 @@ struct RemoteConfig
 
 [[nodiscard]] auto strlratio2(double ratio)
 {
-    return tr_strratio(ratio, "Inf");
+    return tr_strratio(ratio, "None", "Inf");
 }
 
 [[nodiscard]] auto strlratio(int64_t numerator, int64_t denominator)
@@ -210,7 +210,7 @@ enum
 // --- Command-Line Arguments
 
 using Arg = tr_option::Arg;
-auto constexpr Options = std::array<tr_option, 105>{ {
+auto constexpr Options = std::array<tr_option, 106>{ {
     { 'a', "add", "Add torrent files by filename or URL", "a", Arg::None, nullptr },
     { 970, "alt-speed", "Use the alternate Limits", "as", Arg::None, nullptr },
     { 971, "no-alt-speed", "Don't use the alternate Limits", "AS", Arg::None, nullptr },
@@ -339,7 +339,12 @@ auto constexpr Options = std::array<tr_option, 105>{ {
     { 991, "no-start-paused", "Start added torrents unpaused", nullptr, Arg::None, nullptr },
     { 992, "trash-torrent", "Delete torrents after adding", nullptr, Arg::None, nullptr },
     { 993, "no-trash-torrent", "Do not delete torrents after adding", nullptr, Arg::None, nullptr },
-    { 994, "sequential-download", "Download the torrent sequentially", "seq", Arg::None, nullptr },
+    { 994,
+      "sequential-download",
+      "Download the torrent sequentially, starting from <piece> or 0",
+      "seq",
+      Arg::Optional,
+      "<piece>" },
     { 995, "no-sequential-download", "Download the torrent normally", "SEQ", Arg::None, nullptr },
     { 984, "honor-session", "Make the current torrent(s) honor the session limits", "hl", Arg::None, nullptr },
     { 985, "no-honor-session", "Make the current torrent(s) not honor the session limits", "HL", Arg::None, nullptr },
@@ -350,8 +355,14 @@ auto constexpr Options = std::array<tr_option, 105>{ {
       Arg::Required,
       "<speed>" },
     { 'U', "no-uplimit", "Disable max upload speed for the current torrent(s) or globally", "U", Arg::None, nullptr },
-    { 830, "utp", "Enable µTP for peer connections", nullptr, Arg::None, nullptr },
-    { 831, "no-utp", "Disable µTP for peer connections", nullptr, Arg::None, nullptr },
+    { 830,
+      "preferred-transports",
+      "Comma-separated list specifying preference of transport protocols",
+      nullptr,
+      Arg::Required,
+      "<protocol(s)>" },
+    { 831, "utp", "Enable µTP for peer connections", nullptr, Arg::None, nullptr },
+    { 832, "no-utp", "Disable µTP for peer connections", nullptr, Arg::None, nullptr },
     { 'v', "verify", "Verify the current torrent(s)", "v", Arg::None, nullptr },
     { 'V', "version", "Show version number and exit", "V", Arg::None, nullptr },
     { 'w',
@@ -440,8 +451,9 @@ enum
     case 801: /* no-torrent-done-script */
     case 802: /* torrent-done-seeding-script */
     case 803: /* no-torrent-done-seeding-script */
-    case 830: /* utp */
-    case 831: /* no-utp */
+    case 830: /* preferred-transports */
+    case 831: /* utp */
+    case 832: /* no-utp */
     case 970: /* alt-speed */
     case 971: /* no-alt-speed */
     case 972: /* alt-speed-downlimit */
@@ -551,6 +563,32 @@ enum
     return {};
 }
 
+/**
+ * - values that are all-digits are numbers
+ * - values that are all-digits or commas are number lists
+ * - anything else is a string
+ */
+[[nodiscard]] tr_variant rpc_parse_list_str(std::string_view str)
+{
+    auto const values = tr_num_parse_range(str);
+    auto const n_values = std::size(values);
+
+    if (n_values == 0)
+    {
+        return { str };
+    }
+
+    if (n_values == 1)
+    {
+        return { values[0] };
+    }
+
+    auto num_vec = tr_variant::Vector{};
+    num_vec.resize(n_values);
+    std::copy_n(std::cbegin(values), n_values, std::begin(num_vec));
+    return { std::move(num_vec) };
+}
+
 void add_id_arg(tr_variant::Map& args, std::string_view id_str, std::string_view fallback = "")
 {
     if (std::empty(id_str))
@@ -583,7 +621,7 @@ void add_id_arg(tr_variant::Map& args, std::string_view id_str, std::string_view
 
         if (is_num || is_list)
         {
-            args.insert_or_assign(TR_KEY_ids, tr_rpc_parse_list_str(id_str));
+            args.insert_or_assign(TR_KEY_ids, rpc_parse_list_str(id_str));
         }
         else
         {
@@ -666,6 +704,22 @@ void set_group(tr_variant::Map& args, std::string_view group)
     args.insert_or_assign(TR_KEY_group, tr_variant::unmanaged_string(group));
 }
 
+void set_preferred_transports(tr_variant::Map& args, std::string_view comma_delimited_protocols)
+{
+    auto* preferred_protocols = args.find_if<tr_variant::Vector>(TR_KEY_preferred_transports);
+    if (preferred_protocols == nullptr)
+    {
+        preferred_protocols = args.insert_or_assign(TR_KEY_preferred_transports, tr_variant::make_vector(10))
+                                  .first.get_if<tr_variant::Vector>();
+    }
+
+    auto protocol = std::string_view{};
+    while (tr_strv_sep(&comma_delimited_protocols, &protocol, ','))
+    {
+        preferred_protocols->emplace_back(protocol);
+    }
+}
+
 [[nodiscard]] auto make_files_list(std::string_view str_in)
 {
     if (std::empty(str_in))
@@ -696,7 +750,7 @@ auto constexpr FilesKeys = std::array<tr_quark, 4>{
 };
 static_assert(FilesKeys[std::size(FilesKeys) - 1] != tr_quark{});
 
-auto constexpr DetailsKeys = std::array<tr_quark, 56>{
+auto constexpr DetailsKeys = std::array<tr_quark, 57>{
     TR_KEY_activityDate,
     TR_KEY_addedDate,
     TR_KEY_bandwidthPriority,
@@ -742,6 +796,7 @@ auto constexpr DetailsKeys = std::array<tr_quark, 56>{
     TR_KEY_seedRatioMode,
     TR_KEY_seedRatioLimit,
     TR_KEY_sequential_download,
+    TR_KEY_sequential_download_from_piece,
     TR_KEY_sizeWhenDone,
     TR_KEY_source,
     TR_KEY_startDate,
@@ -967,6 +1022,10 @@ void print_details(tr_variant::Map const& map)
         if (auto b = t->value_if<bool>(TR_KEY_sequential_download); b)
         {
             fmt::print("  Sequential Download: {:s}\n", *b ? "Yes" : "No");
+            if (auto i = t->value_if<int64_t>(TR_KEY_sequential_download_from_piece); i)
+            {
+                fmt::print("  Sequential Download from piece: {:d}\n", *i);
+            }
         }
 
         if (auto d = t->value_if<double>(TR_KEY_percentDone); d)
@@ -1363,8 +1422,8 @@ void print_peers_impl(tr_variant::Vector const& peers)
                 *address,
                 *flagstr,
                 strlpercent(*progress * 100.0),
-                Speed{ *rate_to_client, Speed::Units::KByps }.count(Speed::Units::KByps),
-                Speed{ *rate_to_peer, Speed::Units::KByps }.count(Speed::Units::KByps),
+                Speed{ *rate_to_client, Speed::Units::Byps }.count(Speed::Units::KByps),
+                Speed{ *rate_to_peer, Speed::Units::Byps }.count(Speed::Units::KByps),
                 *client);
         }
     }
@@ -2836,10 +2895,14 @@ int process_args(char const* rpcurl, int argc, char const* const* argv, RemoteCo
                 break;
 
             case 830:
-                args.insert_or_assign(TR_KEY_utp_enabled, true);
+                set_preferred_transports(args, optarg_sv);
                 break;
 
             case 831:
+                args.insert_or_assign(TR_KEY_utp_enabled, true);
+                break;
+
+            case 832:
                 args.insert_or_assign(TR_KEY_utp_enabled, false);
                 break;
 
@@ -3134,6 +3197,10 @@ int process_args(char const* rpcurl, int argc, char const* const* argv, RemoteCo
             {
             case 994:
                 args.insert_or_assign(TR_KEY_sequential_download, true);
+                if (optarg != nullptr)
+                {
+                    args.insert_or_assign(TR_KEY_sequential_download_from_piece, numarg(optarg_sv));
+                }
                 break;
 
             case 995:
