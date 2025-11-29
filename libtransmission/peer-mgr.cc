@@ -2374,12 +2374,12 @@ void enforceSwarmPeerLimit(tr_swarm* swarm, size_t max)
 void enforceSessionPeerLimit(size_t global_peer_limit, size_t global_peer_limit_seeding, tr_torrents& torrents)
 {
     // group peers
-    auto all_peers = std::vector<tr_peerMsgs*>{};
-    auto seeding_peers = std::vector<tr_peerMsgs*>{};
+    auto all_peers = std::vector<std::shared_ptr<tr_peerMsgs>>{};
+    auto seeding_peers = std::vector<std::shared_ptr<tr_peerMsgs>>{};
 
     for (auto const* const tor : torrents)
     {
-        for (auto* const peer : tor->swarm->peers)
+        for (auto const& peer : tor->swarm->peers)
         {
             if (peer->is_active(TR_UP))
             {
