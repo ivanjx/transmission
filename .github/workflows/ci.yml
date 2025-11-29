@@ -4,6 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches: [ mine ]
+    paths:
+      - 'libtransmission/**'
+      - 'cli/**'
+      - 'daemon/**'
+      - 'gtk/**'
+      - 'web/**'
+      - 'cmake/**'
+      - 'third-party/**'
+      - 'CMakeLists.txt'
+      - 'Dockerfile'
 
 jobs:
   build:
