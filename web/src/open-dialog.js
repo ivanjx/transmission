@@ -196,8 +196,8 @@ export class OpenDialog extends EventTarget {
       const datalist = document.createElement('datalist');
       datalist.id = 'add-dialog-folder-datalist';
       const dirs = new Set();
-      for (const row of this.controller._rows) {
-        const dir = row.getTorrent().getDownloadDir().trim();
+      for (const row of this.controller._torrentOrder) {
+        const dir = row.getDownloadDir().trim();
         if (!dir || dirs.has(dir)) {
           continue;
         }
