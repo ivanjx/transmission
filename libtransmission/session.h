@@ -463,7 +463,7 @@ public:
     private:
         friend class libtransmission::Serializable<Settings>;
 
-        static inline auto const fields = std::array<Field, 61U>{ {
+        static inline auto const fields = std::array<Field, 62U>{ {
             { TR_KEY_announce_ip, &Settings::announce_ip },
             { TR_KEY_announce_ip_enabled, &Settings::announce_ip_enabled },
             { TR_KEY_bind_address_ipv4, &Settings::bind_address_ipv4 },
@@ -478,7 +478,7 @@ public:
             { TR_KEY_download_queue_size, &Settings::download_queue_size },
             { TR_KEY_encryption, &Settings::encryption_mode },
             { TR_KEY_idle_seeding_limit, &Settings::idle_seeding_limit_minutes },
-            { TR_KEY_peer_limit_global_seeding, &peer_limit_global_seeding },
+            { TR_KEY_peer_limit_global_seeding, &Settings::peer_limit_global_seeding },
             { TR_KEY_idle_seeding_limit_enabled, &Settings::idle_seeding_limit_enabled },
             { TR_KEY_incomplete_dir, &Settings::incomplete_dir },
             { TR_KEY_incomplete_dir_enabled, &Settings::incomplete_dir_enabled },
