@@ -356,8 +356,8 @@ auto constexpr MyStatic = std::array<std::string_view, TR_N_KEYS>{
     "paused_torrent_count"sv, // rpc
     "peer-congestion-algorithm"sv, // tr_session::Settings
     "peer-limit"sv, // rpc
-    "peer-limit-global-seeding"sv,
     "peer-limit-global"sv, // daemon, rpc, tr_session::Settings
+    "peer-limit-global-seeding"sv,
     "peer-limit-per-torrent"sv, // daemon, gtk app, rpc, tr_session::Settings
     "peer-port"sv, // daemon, gtk app, rpc, tr_session::Settings
     "peer-port-random-high"sv, // tr_session::Settings
