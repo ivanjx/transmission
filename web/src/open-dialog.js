@@ -14,6 +14,7 @@ const is_safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 // https://github.com/transmission/transmission/pull/6320#issuecomment-1896968904
 // https://caniuse.com/input-file-accept
 const can_use_input_accept = !(is_ios && is_safari);
+const max_datalist_options = 100;
 
 export class OpenDialog extends EventTarget {
   constructor(controller, remote, url = '', files = null) {
@@ -191,39 +192,25 @@ export class OpenDialog extends EventTarget {
     input.addEventListener('change', () => this._updateFreeSpaceInAddDialog());
     input.value = this.controller.session_properties.download_dir;
     workarea.append(input);
-
-    const datalist = document.createElement('datalist');
-    datalist.id = 'add-dialog-folder-datalist';
-    const rebuildDatalist = () => {
-      while (datalist.firstChild) {
-        datalist.removeChild(datalist.firstChild);
-      }
+    workarea.append((() => {
+      const datalist = document.createElement('datalist');
+      datalist.id = 'add-dialog-folder-datalist';
       const dirs = new Set();
-      let torrents = this.controller._getFilteredTorrents();
-      torrents = torrents.slice().sort((a, b) => b.getDateAdded() - a.getDateAdded());
-      for (const torrent of torrents) {
-        const dir = torrent.getDownloadDir();
-        if (dir && dir.trim().length > 0) {
-          dirs.add(dir);
+      for (const row of this.controller._rows) {
+        const dir = row.getTorrent().getDownloadDir().trim();
+        if (!dir || dirs.has(dir)) {
+          continue;
         }
-        if (dirs.size >= 100) { // do not explode the ui
-          break;
-        }
-      }
-      for (const dir of dirs) {
+        dirs.add(dir);
         const option = document.createElement('option');
         option.value = dir;
         datalist.append(option);
+        if (dirs.size >= max_datalist_options) { // do not explode the ui
+          break;
+        }
       }
-    };
-    const clearDatalist = () => {
-      while (datalist.firstChild) {
-        datalist.removeChild(datalist.firstChild);
-      }
-    };
-    input.addEventListener('focus', rebuildDatalist);
-    input.addEventListener('blur', clearDatalist)
-    workarea.append(datalist);
+      return datalist;
+    })());
     elements.folder_input = input;
 
     const checkarea = document.createElement('div');
