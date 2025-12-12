@@ -396,11 +396,12 @@ void register_magnet_link_handler()
     }
     catch (Gio::Error const& e)
     {
-        gtr_warning(fmt::format(
-            fmt::runtime(_("Couldn't register Transmission as a {content_type} handler: {error} ({error_code})")),
-            fmt::arg("content_type", content_type),
-            fmt::arg("error", e.what()),
-            fmt::arg("error_code", static_cast<int>(e.code()))));
+        gtr_warning(
+            fmt::format(
+                fmt::runtime(_("Couldn't register Transmission as a {content_type} handler: {error} ({error_code})")),
+                fmt::arg("content_type", content_type),
+                fmt::arg("error", e.what()),
+                fmt::arg("error_code", static_cast<int>(e.code()))));
     }
 }
 
@@ -775,36 +776,6 @@ void Application::Impl::app_setup()
     {
         gtr_window_set_skip_taskbar_hint(*wind_, icon_ != nullptr);
         gtr_action_set_toggled("toggle-main-window", false);
-    }
-
-    if (!gtr_pref_flag_get(TR_KEY_user_has_given_informed_consent))
-    {
-        auto w = std::make_shared<Gtk::MessageDialog>(
-            *wind_,
-            _("Transmission is a file sharing program. When you run a torrent, its data will be "
-              "made available to others by means of upload. Any content you share is your sole responsibility."),
-            false,
-            TR_GTK_MESSAGE_TYPE(OTHER),
-            TR_GTK_BUTTONS_TYPE(NONE),
-            true);
-        w->add_button(_("_Cancel"), TR_GTK_RESPONSE_TYPE(REJECT));
-        w->add_button(_("I _Agree"), TR_GTK_RESPONSE_TYPE(ACCEPT));
-        w->set_default_response(TR_GTK_RESPONSE_TYPE(ACCEPT));
-        w->signal_response().connect(
-            [w](int response) mutable
-            {
-                if (response == TR_GTK_RESPONSE_TYPE(ACCEPT))
-                {
-                    // only show it once
-                    gtr_pref_flag_set(TR_KEY_user_has_given_informed_consent, true);
-                    w.reset();
-                }
-                else
-                {
-                    exit(0);
-                }
-            });
-        w->show();
     }
 }
 
@@ -1480,7 +1451,7 @@ void Application::Impl::start_all_torrents()
     tr_variant request;
 
     tr_variantInitDict(&request, 1);
-    tr_variantDictAddStrView(&request, TR_KEY_method, "torrent-start"sv);
+    tr_variantDictAddStrView(&request, TR_KEY_method, tr_quark_get_string_view(TR_KEY_torrent_start_kebab));
     tr_rpc_request_exec(session, request, {});
 }
 
@@ -1490,7 +1461,7 @@ void Application::Impl::pause_all_torrents()
     tr_variant request;
 
     tr_variantInitDict(&request, 1);
-    tr_variantDictAddStrView(&request, TR_KEY_method, "torrent-stop"sv);
+    tr_variantDictAddStrView(&request, TR_KEY_method, tr_quark_get_string_view(TR_KEY_torrent_stop_kebab));
     tr_rpc_request_exec(session, request, {});
 }
 
@@ -1563,6 +1534,7 @@ void Application::Impl::actions_handler(Glib::ustring const& action_name)
         }
     }
     else if (
+        // TODO: migrate from _kebab
         action_name == "torrent-start" || action_name == "torrent-start-now" || action_name == "torrent-stop" ||
         action_name == "torrent-reannounce" || action_name == "torrent-verify" || action_name == "queue-move-top" ||
         action_name == "queue-move-up" || action_name == "queue-move-down" || action_name == "queue-move-bottom")

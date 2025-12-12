@@ -8,6 +8,7 @@
 #include <algorithm> // std::move()
 #include <cstddef> // size_t
 #include <cstdint> // int64_t
+#include <initializer_list>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -95,11 +96,26 @@ public:
 
         [[nodiscard]] TR_CONSTEXPR20 auto find(tr_quark const key) const noexcept
         {
-            auto const predicate = [key](auto const& item)
+            return Vector::const_iterator{ const_cast<Map*>(this)->find(key) };
+        }
+
+        [[nodiscard]] auto contains(tr_quark const key) const noexcept
+        {
+            return find(key) != end(); // NOLINT(readability-container-contains)
+        }
+
+        [[nodiscard]] TR_CONSTEXPR20 auto find(std::initializer_list<tr_quark> keys) noexcept
+        {
+            auto constexpr Predicate = [](auto const& item, tr_quark key)
             {
                 return item.first == key;
             };
-            return std::find_if(std::cbegin(vec_), std::cend(vec_), predicate);
+            return std::find_first_of(std::begin(vec_), std::end(vec_), std::begin(keys), std::end(keys), Predicate);
+        }
+
+        [[nodiscard]] TR_CONSTEXPR20 auto find(std::initializer_list<tr_quark> keys) const noexcept
+        {
+            return Vector::const_iterator{ const_cast<Map*>(this)->find(keys) };
         }
 
         [[nodiscard]] TR_CONSTEXPR20 auto size() const noexcept
@@ -126,6 +142,23 @@ public:
             }
 
             return 0U;
+        }
+
+        bool replace_key(tr_quark const old_key, tr_quark const new_key)
+        {
+            if (contains(new_key))
+            {
+                return false;
+            }
+
+            auto iter = find(old_key);
+            if (iter == end())
+            {
+                return false;
+            }
+
+            iter->first = new_key;
+            return true;
         }
 
         [[nodiscard]] tr_variant& operator[](tr_quark const& key)
@@ -163,23 +196,46 @@ public:
         // --- custom functions
 
         template<typename Type>
-        [[nodiscard]] TR_CONSTEXPR20 auto find_if(tr_quark const key) noexcept
+        [[nodiscard]] TR_CONSTEXPR20 auto* find_if(tr_quark const key) noexcept
         {
             auto const iter = find(key);
             return iter != end() ? iter->second.get_if<Type>() : nullptr;
         }
 
         template<typename Type>
-        [[nodiscard]] TR_CONSTEXPR20 auto find_if(tr_quark const key) const noexcept
+        [[nodiscard]] TR_CONSTEXPR20 auto const* find_if(tr_quark const key) const noexcept
         {
-            auto const iter = find(key);
+            return const_cast<Map*>(this)->find_if<Type>(key);
+        }
+
+        template<typename Type>
+        [[nodiscard]] TR_CONSTEXPR20 auto* find_if(std::initializer_list<tr_quark> keys) noexcept
+        {
+            auto const iter = find(keys);
             return iter != end() ? iter->second.get_if<Type>() : nullptr;
+        }
+
+        template<typename Type>
+        [[nodiscard]] TR_CONSTEXPR20 auto* find_if(std::initializer_list<tr_quark> keys) const noexcept
+        {
+            return const_cast<Map*>(this)->find_if<Type>(keys);
         }
 
         template<typename Type>
         [[nodiscard]] std::optional<Type> value_if(tr_quark const key) const noexcept
         {
             if (auto it = find(key); it != end())
+            {
+                return it->second.value_if<Type>();
+            }
+
+            return {};
+        }
+
+        template<typename Type>
+        [[nodiscard]] std::optional<Type> value_if(std::initializer_list<tr_quark> keys) const noexcept
+        {
+            if (auto it = find(keys); it != end())
             {
                 return it->second.value_if<Type>();
             }
@@ -236,6 +292,11 @@ public:
         auto ret = tr_variant{};
         ret.val_.emplace<StringHolder>().set_unmanaged(val);
         return ret;
+    }
+
+    [[nodiscard]] static tr_variant unmanaged_string(tr_quark const key)
+    {
+        return unmanaged_string(tr_quark_get_string_view(key));
     }
 
     template<typename Val>

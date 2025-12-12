@@ -113,8 +113,8 @@ export class Inspector extends EventTarget {
       ['hash', 'Hash:'],
       ['privacy', 'Privacy:'],
       ['origin', 'Origin:'],
-      ['dateAdded', 'Date added:'],
-      ['magnetLink', 'Magnet:'],
+      ['date_added', 'Date added:'],
+      ['magnet_link', 'Magnet:'],
       ['comment', 'Comment:'],
       ['labels', 'Labels:'],
     ];
@@ -549,7 +549,7 @@ export class Inspector extends EventTarget {
     }
     setTextContent(e.info.location, string);
 
-    // dateAdded
+    // date_added
     if (torrents.length === 0) {
       string = none;
     } else {
@@ -569,16 +569,16 @@ export class Inspector extends EventTarget {
           })
         : mixed;
     }
-    setTextContent(e.info.dateAdded, string);
+    setTextContent(e.info.date_added, string);
 
-    // magnetLink
+    // magnet_link
     if (torrents.length === 0) {
-      setTextContent(e.info.magnetLink, none);
+      setTextContent(e.info.magnet_link, none);
     } else if (torrents.length > 1) {
-      setTextContent(e.info.magnetLink, mixed);
+      setTextContent(e.info.magnet_link, mixed);
     } else {
       const link = torrents[0].getMagnetLink();
-      e.info.magnetLink.innerHTML = `<a class="inspector-info-magnet" href="${link}"><button></button></a>`;
+      e.info.magnet_link.innerHTML = `<a class="inspector-info-magnet" href="${link}"><button></button></a>`;
     }
   }
 
@@ -613,30 +613,30 @@ export class Inspector extends EventTarget {
 
     const cell_setters = [
       (peer, td) => {
-        td.dataset.encrypted = peer.isEncrypted;
+        td.dataset.encrypted = peer.is_encrypted;
       },
       (peer, td) =>
         setTextContent(
           td,
-          peer.rateToPeer ? fmt.speedBps(peer.rateToPeer) : '',
+          peer.rate_to_peer ? fmt.speedBps(peer.rate_to_peer) : '',
         ),
       (peer, td) =>
         setTextContent(
           td,
-          peer.rateToClient ? fmt.speedBps(peer.rateToClient) : '',
+          peer.rate_to_client ? fmt.speedBps(peer.rate_to_client) : '',
         ),
       (peer, td) => setTextContent(td, `${Math.floor(peer.progress * 100)}%`),
       (peer, td) => {
-        setTextContent(td, peer.flagStr);
-        td.setAttribute('title', Inspector._peerStatusTitle(peer.flagStr));
+        setTextContent(td, peer.flag_str);
+        td.setAttribute('title', Inspector._peerStatusTitle(peer.flag_str));
       },
       (peer, td) => {
         setTextContent(td, peer.address);
         td.setAttribute('title', peer.address);
       },
       (peer, td) => {
-        setTextContent(td, peer.clientName);
-        td.setAttribute('title', peer.clientName);
+        setTextContent(td, peer.client_name);
+        td.setAttribute('title', peer.client_name);
       },
       (peer, td) => {
         Inspector._fetchCountryCode(peer.address).then(countryCode => {
@@ -686,24 +686,24 @@ export class Inspector extends EventTarget {
   /// TRACKERS PAGE
 
   static getAnnounceState(tracker) {
-    switch (tracker.announceState) {
+    switch (tracker.announce_state) {
       case Torrent._TrackerActive:
         return 'Announce in progress';
       case Torrent._TrackerWaiting: {
         const timeUntilAnnounce = Math.max(
           0,
-          tracker.nextAnnounceTime - Date.now() / 1000,
+          tracker.next_announce_time - Date.now() / 1000,
         );
         return `Next announce in ${Formatter.timeInterval(timeUntilAnnounce)}`;
       }
       case Torrent._TrackerQueued:
         return 'Announce is queued';
       case Torrent._TrackerInactive:
-        return tracker.isBackup
+        return tracker.is_backup
           ? 'Tracker will be used as a backup'
           : 'Announce not scheduled';
       default:
-        return `unknown announce state: ${tracker.announceState}`;
+        return `unknown announce state: ${tracker.announce_state}`;
     }
   }
 
@@ -711,19 +711,25 @@ export class Inspector extends EventTarget {
     let lastAnnounceLabel = 'Last Announce';
     let lastAnnounce = ['N/A'];
 
-    if (tracker.hasAnnounced) {
-      const lastAnnounceTime = Formatter.timestamp(tracker.lastAnnounceTime);
-      if (tracker.lastAnnounceSucceeded) {
+    if (tracker.has_announced) {
+      const lastAnnounceTime = Formatter.timestamp(tracker.last_announce_time);
+      if (tracker.last_announce_succeeded) {
         lastAnnounce = [
           lastAnnounceTime,
           ' (got ',
-          Formatter.countString('peer', 'peers', tracker.lastAnnouncePeerCount),
+          Formatter.countString(
+            'peer',
+            'peers',
+            tracker.last_announce_peer_count,
+          ),
           ')',
         ];
       } else {
         lastAnnounceLabel = 'Announce error';
         lastAnnounce = [
-          tracker.lastAnnounceResult ? `${tracker.lastAnnounceResult} - ` : '',
+          tracker.last_announce_result
+            ? `${tracker.last_announce_result} - `
+            : '',
           lastAnnounceTime,
         ];
       }
@@ -738,15 +744,16 @@ export class Inspector extends EventTarget {
     let lastScrapeLabel = 'Last Scrape';
     let lastScrape = 'N/A';
 
-    if (tracker.hasScraped) {
-      const lastScrapeTime = Formatter.timestamp(tracker.lastScrapeTime);
-      if (tracker.lastScrapeSucceeded) {
+    if (tracker.has_scraped) {
+      const lastScrapeTime = Formatter.timestamp(tracker.last_scrape_time);
+      if (tracker.last_scrape_succeeded) {
         lastScrape = lastScrapeTime;
       } else {
         lastScrapeLabel = 'Scrape error';
         lastScrape =
-          (tracker.lastScrapeResult ? `${tracker.lastScrapeResult} - ` : '') +
-          lastScrapeTime;
+          (tracker.last_scrape_result
+            ? `${tracker.last_scrape_result} - `
+            : '') + lastScrapeTime;
       }
     }
     return {
@@ -814,7 +821,7 @@ export class Inspector extends EventTarget {
         element.classList.add('tier-seeders');
         setTextContent(
           element,
-          `Seeders: ${tracker.seederCount > -1 ? tracker.seederCount : na}`,
+          `Seeders: ${tracker.seeder_count > -1 ? tracker.seeder_count : na}`,
         );
         tier_div.append(element);
 
@@ -827,7 +834,9 @@ export class Inspector extends EventTarget {
         element.classList.add('tier-leechers');
         setTextContent(
           element,
-          `Leechers: ${tracker.leecherCount > -1 ? tracker.leecherCount : na}`,
+          `Leechers: ${
+            tracker.leecher_count > -1 ? tracker.leecher_count : na
+          }`,
         );
         tier_div.append(element);
 
@@ -844,7 +853,7 @@ export class Inspector extends EventTarget {
         setTextContent(
           element,
           `Downloads: ${
-            tracker.downloadCount > -1 ? tracker.downloadCount : na
+            tracker.download_count > -1 ? tracker.download_count : na
           }`,
         );
         tier_div.append(element);
@@ -872,7 +881,7 @@ export class Inspector extends EventTarget {
     const { indices, wanted } = event_;
     this._changeFileCommand(
       indices,
-      wanted ? 'files-wanted' : 'files-unwanted',
+      wanted ? 'files_wanted' : 'files_unwanted',
     );
   }
 
@@ -882,13 +891,13 @@ export class Inspector extends EventTarget {
     let command = null;
     switch (priority.toString()) {
       case '-1':
-        command = 'priority-low';
+        command = 'priority_low';
         break;
       case '1':
-        command = 'priority-high';
+        command = 'priority_high';
         break;
       default:
-        command = 'priority-normal';
+        command = 'priority_normal';
     }
 
     this._changeFileCommand(indices, command);
