@@ -3,7 +3,7 @@ name: cicd
 on:
   workflow_dispatch:
   push:
-    branches: [ mine2 ]
+    branches: [ mine ]
     paths:
       - 'libtransmission/**'
       - 'cli/**'
@@ -41,6 +41,6 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/ivanjx/transmission:mine
+          tags: ghcr.io/ivanjx/transmission:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
