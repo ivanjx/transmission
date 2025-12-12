@@ -72,7 +72,6 @@ export class Transmission extends EventTarget {
     // Initialize the implementation fields
     this.filterText = '';
     this._torrents = {};
-    this._rows = [];
     this.oldTrackers = [];
     this.dirtyTorrents = new Set();
     this._selectedTorrentIds = new Set(); // Track selected torrents by ID
@@ -333,6 +332,8 @@ export class Transmission extends EventTarget {
     };
 
     this.pointer_event(this.elements.torrent_list, right_click);
+    this.elements.torrent_list.addEventListener('click', this._onRowClicked.bind(this));
+
     this.elements.torrent_list.addEventListener('click', this._onRowClicked.bind(this));
 
     // Get preferences & torrents from the daemon
