@@ -29,6 +29,7 @@
 #include "libtransmission/transmission.h"
 
 #include "libtransmission/blocklist.h"
+#include "libtransmission/crypto-utils.h"
 #include "libtransmission/error.h"
 #include "libtransmission/file.h"
 #include "libtransmission/log.h"
@@ -260,8 +261,12 @@ auto parseFile(std::string_view filename)
         }
         else
         {
-            // don't try to display the actual lines - it causes issues
-            tr_logAddWarn(fmt::format(fmt::runtime(_("Couldn't parse line: '{line}'")), fmt::arg("line", line_number)));
+            auto const base64 = tr_base64_encode(line);
+            tr_logAddWarn(
+                fmt::format(
+                    fmt::runtime(_("Couldn't parse line {line}: {base64}")),
+                    fmt::arg("line", line_number),
+                    fmt::arg("base64", base64)));
         }
     }
     in.close();
@@ -560,7 +565,7 @@ size_t Blocklists::update_primary_blocklist(std::string_view external_file, bool
 {
     // These rules will replace the default blocklist.
     // Build the path of the default blocklist .bin file where we'll save these rules.
-    auto const bin_file = tr_pathbuf{ folder_, '/', DEFAULT_BLOCKLIST_FILENAME };
+    auto const bin_file = tr_pathbuf{ folder_, '/', TrDefaultBlocklistFilename };
 
     // Try to save it
     auto added = Blocklist::saveNew(external_file, bin_file, is_enabled);
