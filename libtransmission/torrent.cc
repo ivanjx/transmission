@@ -11,6 +11,7 @@
 #include <ctime>
 #include <map>
 #include <sstream>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -219,16 +220,12 @@ void tr_torrentSetSpeedLimit_KBps(tr_torrent* const tor, tr_direction const dir,
 size_t tr_torrentGetSpeedLimit_KBps(tr_torrent const* const tor, tr_direction const dir)
 {
     TR_ASSERT(tr_isTorrent(tor));
-    TR_ASSERT(tr_isDirection(dir));
-
     return tor->speed_limit(dir).count(Speed::Units::KByps);
 }
 
 void tr_torrentUseSpeedLimit(tr_torrent* const tor, tr_direction const dir, bool const enabled)
 {
     TR_ASSERT(tr_isTorrent(tor));
-    TR_ASSERT(tr_isDirection(dir));
-
     tor->use_speed_limit(dir, enabled);
 }
 
@@ -243,7 +240,8 @@ void tr_torrentUseSessionLimits(tr_torrent* const tor, bool const enabled)
 {
     TR_ASSERT(tr_isTorrent(tor));
 
-    if (tor->bandwidth().honor_parent_limits(TR_UP, enabled) || tor->bandwidth().honor_parent_limits(TR_DOWN, enabled))
+    if (tor->bandwidth().honor_parent_limits(tr_direction::Up, enabled) ||
+        tor->bandwidth().honor_parent_limits(tr_direction::Down, enabled))
     {
         tor->set_dirty();
     }
@@ -479,7 +477,7 @@ void tr_torrentSetQueuePosition(tr_torrent* tor, size_t queue_position)
 void tr_torrentsQueueMoveTop(tr_torrent* const* torrents_in, size_t torrent_count)
 {
     auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
-    std::sort(std::rbegin(torrents), std::rend(torrents), tr_torrent::CompareQueuePosition);
+    std::sort(torrents.rbegin(), torrents.rend(), tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
         tor->set_queue_position(tr_torrent_queue::MinQueuePosition);
@@ -489,7 +487,7 @@ void tr_torrentsQueueMoveTop(tr_torrent* const* torrents_in, size_t torrent_coun
 void tr_torrentsQueueMoveUp(tr_torrent* const* torrents_in, size_t torrent_count)
 {
     auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
-    std::sort(std::begin(torrents), std::end(torrents), tr_torrent::CompareQueuePosition);
+    std::ranges::sort(torrents, tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
         if (auto const pos = tor->queue_position(); pos > tr_torrent_queue::MinQueuePosition)
@@ -502,7 +500,7 @@ void tr_torrentsQueueMoveUp(tr_torrent* const* torrents_in, size_t torrent_count
 void tr_torrentsQueueMoveDown(tr_torrent* const* torrents_in, size_t torrent_count)
 {
     auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
-    std::sort(std::rbegin(torrents), std::rend(torrents), tr_torrent::CompareQueuePosition);
+    std::sort(torrents.rbegin(), torrents.rend(), tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
         if (auto const pos = tor->queue_position(); pos < tr_torrent_queue::MaxQueuePosition)
@@ -515,7 +513,7 @@ void tr_torrentsQueueMoveDown(tr_torrent* const* torrents_in, size_t torrent_cou
 void tr_torrentsQueueMoveBottom(tr_torrent* const* torrents_in, size_t torrent_count)
 {
     auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
-    std::sort(std::begin(torrents), std::end(torrents), tr_torrent::CompareQueuePosition);
+    std::ranges::sort(torrents, tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
         tor->set_queue_position(tr_torrent_queue::MaxQueuePosition);
@@ -954,10 +952,10 @@ void tr_torrent::init(tr_ctor const& ctor)
 
     if ((loaded & tr_resume::Speedlimit) == 0)
     {
-        use_speed_limit(TR_UP, false);
-        set_speed_limit(TR_UP, session->speed_limit(TR_UP));
-        use_speed_limit(TR_DOWN, false);
-        set_speed_limit(TR_DOWN, session->speed_limit(TR_DOWN));
+        use_speed_limit(tr_direction::Up, false);
+        set_speed_limit(tr_direction::Up, session->speed_limit(tr_direction::Up));
+        use_speed_limit(tr_direction::Down, false);
+        set_speed_limit(tr_direction::Down, session->speed_limit(tr_direction::Down));
         tr_torrentUseSessionLimits(this, true);
     }
 
@@ -978,10 +976,7 @@ void tr_torrent::init(tr_ctor const& ctor)
     {
         // if tr_resume::load() loaded progress info, then initCheckedPieces()
         // has already looked for local data on the filesystem
-        has_any_local_data = std::any_of(
-            std::begin(file_mtimes_),
-            std::end(file_mtimes_),
-            [](auto mtime) { return mtime > 0; });
+        has_any_local_data = std::ranges::any_of(file_mtimes_, [](auto mtime) { return mtime > 0; });
     }
 
     auto const file_path = store_file();
@@ -1291,8 +1286,8 @@ tr_stat tr_torrent::stats() const
     stats.errorString = this->error().errmsg().c_str();
 
     stats.peersConnected = swarm_stats.peer_count;
-    stats.peersSendingToUs = swarm_stats.active_peer_count[TR_DOWN];
-    stats.peersGettingFromUs = swarm_stats.active_peer_count[TR_UP];
+    stats.peersSendingToUs = swarm_stats.active_peer_count[static_cast<uint8_t>(tr_direction::Down)];
+    stats.peersGettingFromUs = swarm_stats.active_peer_count[static_cast<uint8_t>(tr_direction::Up)];
     stats.webseedsSendingToUs = swarm_stats.active_webseed_count;
 
     for (int i = 0; i < TR_PEER_FROM_N_TYPES; i++)
@@ -1301,9 +1296,9 @@ tr_stat tr_torrent::stats() const
         stats.knownPeersFrom[i] = swarm_stats.known_peer_from_count[i];
     }
 
-    auto const piece_upload_speed = bandwidth().get_piece_speed(now_msec, TR_UP);
+    auto const piece_upload_speed = bandwidth().get_piece_speed(now_msec, tr_direction::Up);
     stats.pieceUploadSpeed_KBps = piece_upload_speed.count(Speed::Units::KByps);
-    auto const piece_download_speed = bandwidth().get_piece_speed(now_msec, TR_DOWN);
+    auto const piece_download_speed = bandwidth().get_piece_speed(now_msec, tr_direction::Down);
     stats.pieceDownloadSpeed_KBps = piece_download_speed.count(Speed::Units::KByps);
 
     stats.percentComplete = this->completion_.percent_complete();
@@ -1799,9 +1794,7 @@ void tr_torrent::create_empty_files() const
         filename.assign(base, '/', subpath);
 
         // create subfolders, if any
-        auto dir = tr_pathbuf{ filename.sv() };
-        dir.popdir();
-        tr_sys_dir_create(dir, TR_SYS_DIR_CREATE_PARENTS, 0777);
+        tr_sys_dir_create(tr_sys_path_dirname(filename), TR_SYS_DIR_CREATE_PARENTS, 0777);
 
         // create the file
         if (auto const fd = tr_sys_file_open(filename, TR_SYS_FILE_WRITE | TR_SYS_FILE_CREATE | TR_SYS_FILE_SEQUENTIAL, 0666);
@@ -1892,7 +1885,7 @@ void tr_torrent::set_labels(labels_t const& new_labels)
 
     for (auto label : new_labels)
     {
-        if (std::find(std::begin(labels_), std::end(labels_), label) == std::end(labels_))
+        if (std::ranges::find(labels_, label) == std::ranges::end(labels_))
         {
             labels_.push_back(label);
         }
@@ -1986,7 +1979,7 @@ tr_block_span_t tr_torrent::block_span_for_file(tr_file_index_t const file) cons
 
 void tr_torrent::set_file_priorities(tr_file_index_t const* files, tr_file_index_t file_count, tr_priority_t priority)
 {
-    if (std::any_of(
+    if (std::ranges::any_of(
             files,
             files + file_count,
             [this, priority](tr_file_index_t file) { return priority != file_priorities_.file_priority(file); }))
@@ -2061,10 +2054,7 @@ void tr_torrent::on_announce_list_changed()
     if (auto const& error_url = error_.announce_url(); !std::empty(error_url))
     {
         auto const& ann = metainfo().announce_list();
-        if (std::none_of(
-                std::begin(ann),
-                std::end(ann),
-                [error_url](auto const& tracker) { return tracker.announce == error_url; }))
+        if (std::ranges::none_of(ann, [error_url](auto const& tracker) { return tracker.announce == error_url; }))
         {
             error_.clear();
         }
@@ -2173,9 +2163,8 @@ std::string_view tr_torrent::primary_mime_type() const
         return Fallback;
     }
 
-    auto const it = std::max_element(
-        std::begin(size_per_mime_type),
-        std::end(size_per_mime_type),
+    auto const it = std::ranges::max_element(
+        size_per_mime_type,
         [](auto const& a, auto const& b) { return a.second < b.second; });
     return it->first;
 }

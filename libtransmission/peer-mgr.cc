@@ -14,6 +14,7 @@
 #include <iterator> // std::back_inserter
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <tuple> // std::tie
 #include <unordered_map>
 #include <utility>
@@ -270,8 +271,8 @@ void tr_peer_info::update_canonical_priority()
     {
         auto buf = std::array{ get_client_advertised_port_().host(), listen_port().host() };
         static_assert(std::is_same_v<std::remove_reference_t<decltype(buf[0])>, uint16_t>);
-        std::sort(std::begin(buf), std::end(buf));
-        std::transform(std::begin(buf), std::end(buf), std::begin(buf), [](uint16_t p) { return htons(p); });
+        std::ranges::sort(buf);
+        std::ranges::for_each(buf, [](auto& p) { p = htons(p); });
         canonical_priority_ = tr_crc32c(reinterpret_cast<uint8_t*>(std::data(buf)), std::size(buf) * sizeof(uint16_t));
         return;
     }
@@ -469,10 +470,10 @@ public:
         return std::count_if(
             std::begin(webseeds),
             std::end(webseeds),
-            [&now](auto const& webseed) { return webseed->get_piece_speed(now, TR_DOWN).base_quantity() != 0U; });
+            [&now](auto const& webseed) { return webseed->get_piece_speed(now, tr_direction::Down).base_quantity() != 0U; });
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 auto peerCount() const noexcept
+    [[nodiscard]] constexpr auto peerCount() const noexcept
     {
         return std::size(peers);
     }
@@ -489,7 +490,7 @@ public:
         --stats.peer_count;
         --stats.peer_from_count[peer_info->from_first()];
 
-        if (auto iter = std::find(std::begin(peers), std::end(peers), peer); iter != std::end(peers))
+        if (auto iter = std::ranges::find(peers, peer); iter != std::ranges::end(peers))
         {
             peers.erase(iter);
             TR_ASSERT(stats.peer_count == peerCount());
@@ -508,13 +509,12 @@ public:
         TR_ASSERT(stats.peer_count == 0);
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 auto is_all_upload_only() const noexcept
+    [[nodiscard]] constexpr auto is_all_upload_only() const noexcept
     {
         if (!pool_is_all_upload_only_)
         {
-            pool_is_all_upload_only_ = std::all_of(
-                std::begin(connectable_pool),
-                std::end(connectable_pool),
+            pool_is_all_upload_only_ = std::ranges::all_of(
+                connectable_pool,
                 [](auto const& key_val) { return key_val.second->is_upload_only(); });
         }
 
@@ -775,7 +775,7 @@ private:
 
     void on_torrent_done()
     {
-        std::for_each(std::begin(peers), std::end(peers), [](auto const& peer) { peer->set_interested(false); });
+        std::ranges::for_each(peers, [](auto const& peer) { peer->set_interested(false); });
         wishlist.reset();
     }
 
@@ -974,11 +974,10 @@ EXIT:
 
         if (CompareAtomsByUsefulness(*info_this, *info_that))
         {
-            auto const it = std::find_if(
-                std::begin(peers),
-                std::end(peers),
+            auto const it = std::ranges::find_if(
+                peers,
                 [&info_that](auto const& peer) { return peer->peer_info == info_that; });
-            TR_ASSERT(it != std::end(peers));
+            TR_ASSERT(it != std::ranges::end(peers));
             (*it)->disconnect_soon();
 
             return false;
@@ -1762,8 +1761,8 @@ tr_swarm_stats tr_swarmGetStats(tr_swarm const* const swarm)
     };
 
     auto& stats = swarm->stats;
-    stats.active_peer_count[TR_UP] = count_active_peers(TR_UP);
-    stats.active_peer_count[TR_DOWN] = count_active_peers(TR_DOWN);
+    stats.active_peer_count[static_cast<uint8_t>(tr_direction::Up)] = count_active_peers(tr_direction::Up);
+    stats.active_peer_count[static_cast<uint8_t>(tr_direction::Down)] = count_active_peers(tr_direction::Down);
     stats.active_webseed_count = swarm->count_active_webseeds(tr_time_msec());
     return stats;
 }
@@ -1840,15 +1839,15 @@ namespace peer_stat_helpers
     stats.progress = peer->percent_done();
     stats.isUTP = peer->is_utp_connection();
     stats.isEncrypted = peer->is_encrypted();
-    stats.rateToPeer_KBps = peer->get_piece_speed(now_msec, TR_CLIENT_TO_PEER).count(Speed::Units::KByps);
-    stats.rateToClient_KBps = peer->get_piece_speed(now_msec, TR_PEER_TO_CLIENT).count(Speed::Units::KByps);
+    stats.rateToPeer_KBps = peer->get_piece_speed(now_msec, tr_direction::ClientToPeer).count(Speed::Units::KByps);
+    stats.rateToClient_KBps = peer->get_piece_speed(now_msec, tr_direction::PeerToClient).count(Speed::Units::KByps);
     stats.peerIsChoked = peer->peer_is_choked();
     stats.peerIsInterested = peer->peer_is_interested();
     stats.clientIsChoked = peer->client_is_choked();
     stats.clientIsInterested = peer->client_is_interested();
     stats.isIncoming = peer->is_incoming_connection();
-    stats.isDownloadingFrom = peer->is_active(TR_PEER_TO_CLIENT);
-    stats.isUploadingTo = peer->is_active(TR_CLIENT_TO_PEER);
+    stats.isDownloadingFrom = peer->is_active(tr_direction::PeerToClient);
+    stats.isUploadingTo = peer->is_active(tr_direction::ClientToPeer);
     stats.isSeed = peer->is_seed();
 
     stats.blocksToPeer = peer->blocks_sent_to_peer.count(now, CancelHistorySec);
@@ -1859,8 +1858,8 @@ namespace peer_stat_helpers
     stats.bytes_to_peer = peer->bytes_sent_to_peer.count(now, CancelHistorySec);
     stats.bytes_to_client = peer->bytes_sent_to_client.count(now, CancelHistorySec);
 
-    stats.activeReqsToPeer = peer->active_req_count(TR_CLIENT_TO_PEER);
-    stats.activeReqsToClient = peer->active_req_count(TR_PEER_TO_CLIENT);
+    stats.activeReqsToPeer = peer->active_req_count(tr_direction::ClientToPeer);
+    stats.activeReqsToClient = peer->active_req_count(tr_direction::PeerToClient);
 
     char* pch = stats.flagStr;
 
@@ -1941,9 +1940,8 @@ tr_peer_stat* tr_peerMgrPeerStats(tr_torrent const* tor, size_t* setme_count)
     auto const lock = tor->unique_lock();
     auto const now = tr_time();
     auto const now_msec = tr_time_msec();
-    std::transform(
-        std::begin(peers),
-        std::end(peers),
+    std::ranges::transform(
+        peers,
         ret,
         [&now, &now_msec](auto const& peer) { return peer_stat_helpers::get_peer_stats(peer.get(), now, now_msec); });
 
@@ -2063,18 +2061,18 @@ struct ChokeData
 {
     if (tor->is_done())
     {
-        return peer->get_piece_speed(now, TR_CLIENT_TO_PEER);
+        return peer->get_piece_speed(now, tr_direction::ClientToPeer);
     }
 
     // downloading a private torrent... take upload speed into account
     // because there may only be a small window of opportunity to share
     if (tor->is_private())
     {
-        return peer->get_piece_speed(now, TR_PEER_TO_CLIENT) + peer->get_piece_speed(now, TR_CLIENT_TO_PEER);
+        return peer->get_piece_speed(now, tr_direction::PeerToClient) + peer->get_piece_speed(now, tr_direction::ClientToPeer);
     }
 
     // downloading a public torrent
-    return peer->get_piece_speed(now, TR_PEER_TO_CLIENT);
+    return peer->get_piece_speed(now, tr_direction::PeerToClient);
 }
 
 // an optimistically unchoked peer is immune from rechoking
@@ -2091,7 +2089,7 @@ void rechokeUploads(tr_swarm* s, uint64_t const now)
     choked.reserve(peer_count);
     auto const* const session = s->manager->session;
     bool const choke_all = !s->tor->client_can_upload();
-    bool const is_maxed_out = s->tor->bandwidth().is_maxed_out(TR_UP, now);
+    bool const is_maxed_out = s->tor->bandwidth().is_maxed_out(tr_direction::Up, now);
 
     /* an optimistic unchoke peer's "optimistic"
      * state lasts for N calls to rechokeUploads(). */
@@ -2357,13 +2355,8 @@ void enforceSwarmPeerLimit(tr_swarm* swarm, size_t max)
 
     // close all but the `max` most active
     auto peers = std::vector<std::shared_ptr<tr_peerMsgs>>(n - max);
-    std::partial_sort_copy(
-        std::begin(swarm->peers),
-        std::end(swarm->peers),
-        std::begin(peers),
-        std::end(peers),
-        ComparePeerByLeastActive);
-    std::for_each(std::begin(peers), std::end(peers), close_peer);
+    std::ranges::partial_sort_copy(swarm->peers, peers, ComparePeerByLeastActive);
+    std::ranges::for_each(peers, close_peer);
 }
 
 void enforceSessionPeerLimit(size_t global_peer_limit, size_t global_peer_limit_seeding, tr_torrents& torrents)
@@ -2376,7 +2369,7 @@ void enforceSessionPeerLimit(size_t global_peer_limit, size_t global_peer_limit_
     {
         for (auto const& peer : tor->swarm->peers)
         {
-            if (peer->is_active(TR_UP))
+            if (peer->is_active(tr_direction::Up))
             {
                 seeding_peers.push_back(peer);
             }
@@ -2494,11 +2487,7 @@ void tr_peerMgr::peer_info_pulse()
 
         auto infos = std::vector<std::shared_ptr<tr_peer_info>>{};
         infos.reserve(pool_size);
-        std::transform(
-            std::begin(pool),
-            std::end(pool),
-            std::back_inserter(infos),
-            [](auto const& keyval) { return keyval.second; });
+        std::ranges::transform(pool, std::back_inserter(infos), [](auto const& keyval) { return keyval.second; });
         pool.clear();
 
         // Keep all peer info objects before test_begin unconditionally
@@ -2744,7 +2733,7 @@ void get_peer_candidates(size_t global_peer_limit, size_t global_peer_limit_seed
         }
 
         /* if we've already got enough speed in this torrent... */
-        if (seeding && tor->bandwidth().is_maxed_out(TR_UP, now_msec))
+        if (seeding && tor->bandwidth().is_maxed_out(tr_direction::Up, now_msec))
         {
             continue;
         }

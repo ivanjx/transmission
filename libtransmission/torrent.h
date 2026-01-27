@@ -240,7 +240,7 @@ struct tr_torrent
 
     [[nodiscard]] constexpr auto uses_session_limits() const noexcept
     {
-        return bandwidth().are_parent_limits_honored(TR_UP);
+        return bandwidth().are_parent_limits_honored(tr_direction::Up);
     }
 
     [[nodiscard]] constexpr auto uses_speed_limit(tr_direction dir) const noexcept
@@ -340,7 +340,7 @@ struct tr_torrent
         return completion_.has_piece(piece);
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 auto has_block(tr_block_index_t block) const
+    [[nodiscard]] constexpr auto has_block(tr_block_index_t block) const
     {
         return completion_.has_block(block);
     }
@@ -409,7 +409,7 @@ struct tr_torrent
         return files_wanted_.piece_wanted(piece);
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 bool file_is_wanted(tr_file_index_t file) const
+    [[nodiscard]] constexpr bool file_is_wanted(tr_file_index_t file) const
     {
         return files_wanted_.file_wanted(file);
     }
@@ -470,12 +470,12 @@ struct tr_torrent
 
     /// METAINFO - FILES
 
-    [[nodiscard]] TR_CONSTEXPR20 auto const& files() const noexcept
+    [[nodiscard]] constexpr auto const& files() const noexcept
     {
         return metainfo_.files();
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 auto file_count() const noexcept
+    [[nodiscard]] constexpr auto file_count() const noexcept
     {
         return metainfo_.file_count();
     }
@@ -512,7 +512,7 @@ struct tr_torrent
 
     /// METAINFO - WEBSEEDS
 
-    [[nodiscard]] TR_CONSTEXPR20 auto webseed_count() const noexcept
+    [[nodiscard]] constexpr auto webseed_count() const noexcept
     {
         return metainfo_.webseed_count();
     }
@@ -651,7 +651,7 @@ struct tr_torrent
 
     [[nodiscard]] constexpr auto queue_direction() const noexcept
     {
-        return is_done() ? TR_UP : TR_DOWN;
+        return is_done() ? tr_direction::Up : tr_direction::Down;
     }
 
     [[nodiscard]] constexpr auto is_queued(tr_direction const dir) const noexcept
@@ -686,12 +686,12 @@ struct tr_torrent
 
     [[nodiscard]] constexpr bool client_can_download() const
     {
-        return this->is_piece_transfer_allowed(TR_PEER_TO_CLIENT);
+        return this->is_piece_transfer_allowed(tr_direction::PeerToClient);
     }
 
     [[nodiscard]] constexpr bool client_can_upload() const
     {
-        return this->is_piece_transfer_allowed(TR_CLIENT_TO_PEER);
+        return this->is_piece_transfer_allowed(tr_direction::ClientToPeer);
     }
 
     void set_download_dir(std::string_view path, bool is_new_torrent = false);
@@ -735,12 +735,12 @@ struct tr_torrent
             return is_done() ? TR_STATUS_SEED : TR_STATUS_DOWNLOAD;
         }
 
-        if (is_queued(TR_UP) && session->queueEnabled(TR_UP))
+        if (is_queued(tr_direction::Up) && session->queueEnabled(tr_direction::Up))
         {
             return TR_STATUS_SEED_WAIT;
         }
 
-        if (is_queued(TR_DOWN) && session->queueEnabled(TR_DOWN))
+        if (is_queued(tr_direction::Down) && session->queueEnabled(tr_direction::Down))
         {
             return TR_STATUS_DOWNLOAD_WAIT;
         }
@@ -979,7 +979,7 @@ struct tr_torrent
 
     void stop_if_seed_limit_reached();
 
-    [[nodiscard]] TR_CONSTEXPR20 auto obfuscated_hash_equals(tr_sha1_digest_t const& test) const noexcept
+    [[nodiscard]] constexpr auto obfuscated_hash_equals(tr_sha1_digest_t const& test) const noexcept
     {
         return obfuscated_hash_ == test;
     }
@@ -1177,7 +1177,7 @@ private:
         return n_secs;
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 bool is_piece_checked(tr_piece_index_t piece) const
+    [[nodiscard]] constexpr bool is_piece_checked(tr_piece_index_t piece) const
     {
         return checked_pieces_.test(piece);
     }

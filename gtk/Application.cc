@@ -73,6 +73,7 @@
 #include <iterator> // std::back_inserter
 #include <map>
 #include <memory>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -251,7 +252,7 @@ void gtr_window_present(T const& window)
 std::string get_details_dialog_key(std::vector<tr_torrent_id_t> const& id_list)
 {
     auto tmp = id_list;
-    std::sort(tmp.begin(), tmp.end());
+    std::ranges::sort(tmp);
 
     std::ostringstream gstr;
 
@@ -1172,19 +1173,19 @@ void Application::Impl::on_prefs_changed(tr_quark const key)
         break;
 
     case TR_KEY_speed_limit_down_enabled:
-        tr_sessionLimitSpeed(tr, TR_DOWN, gtr_pref_flag_get(key));
+        tr_sessionLimitSpeed(tr, tr_direction::Down, gtr_pref_flag_get(key));
         break;
 
     case TR_KEY_speed_limit_down:
-        tr_sessionSetSpeedLimit_KBps(tr, TR_DOWN, gtr_pref_int_get(key));
+        tr_sessionSetSpeedLimit_KBps(tr, tr_direction::Down, gtr_pref_int_get(key));
         break;
 
     case TR_KEY_speed_limit_up_enabled:
-        tr_sessionLimitSpeed(tr, TR_UP, gtr_pref_flag_get(key));
+        tr_sessionLimitSpeed(tr, tr_direction::Up, gtr_pref_flag_get(key));
         break;
 
     case TR_KEY_speed_limit_up:
-        tr_sessionSetSpeedLimit_KBps(tr, TR_UP, gtr_pref_int_get(key));
+        tr_sessionSetSpeedLimit_KBps(tr, tr_direction::Up, gtr_pref_int_get(key));
         break;
 
     case TR_KEY_ratio_limit_enabled:
@@ -1216,7 +1217,7 @@ void Application::Impl::on_prefs_changed(tr_quark const key)
         break;
 
     case TR_KEY_download_queue_size:
-        tr_sessionSetQueueSize(tr, TR_DOWN, gtr_pref_int_get(key));
+        tr_sessionSetQueueSize(tr, tr_direction::Down, gtr_pref_int_get(key));
         break;
 
     case TR_KEY_queue_stalled_minutes:
@@ -1264,11 +1265,11 @@ void Application::Impl::on_prefs_changed(tr_quark const key)
         break;
 
     case TR_KEY_alt_speed_up:
-        tr_sessionSetAltSpeed_KBps(tr, TR_UP, gtr_pref_int_get(key));
+        tr_sessionSetAltSpeed_KBps(tr, tr_direction::Up, gtr_pref_int_get(key));
         break;
 
     case TR_KEY_alt_speed_down:
-        tr_sessionSetAltSpeed_KBps(tr, TR_DOWN, gtr_pref_int_get(key));
+        tr_sessionSetAltSpeed_KBps(tr, tr_direction::Down, gtr_pref_int_get(key));
         break;
 
     case TR_KEY_alt_speed_enabled:

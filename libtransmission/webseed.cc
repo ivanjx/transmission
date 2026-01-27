@@ -9,6 +9,7 @@
 #include <iterator>
 #include <memory>
 #include <numeric> // std::accumulate()
+#include <ranges>
 #include <set>
 #include <string>
 #include <string_view>
@@ -196,13 +197,13 @@ public:
 
     [[nodiscard]] Speed get_piece_speed(uint64_t now, tr_direction dir) const override
     {
-        return dir == TR_DOWN ? bandwidth_.get_piece_speed(now, dir) : Speed{};
+        return dir == tr_direction::Down ? bandwidth_.get_piece_speed(now, dir) : Speed{};
     }
 
     [[nodiscard]] tr_webseed_view get_view() const override
     {
         auto const is_downloading = !std::empty(tasks);
-        auto const speed = get_piece_speed(tr_time_msec(), TR_DOWN);
+        auto const speed = get_piece_speed(tr_time_msec(), tr_direction::Down);
         return {
             .url = base_url.c_str(),
             .is_downloading = is_downloading,
@@ -210,9 +211,9 @@ public:
         };
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 size_t active_req_count(tr_direction dir) const noexcept override
+    [[nodiscard]] constexpr size_t active_req_count(tr_direction dir) const noexcept override
     {
-        if (dir == TR_CLIENT_TO_PEER) // blocks we've requested
+        if (dir == tr_direction::ClientToPeer) // blocks we've requested
         {
             return active_requests.count();
         }
@@ -241,7 +242,7 @@ public:
         idle_timer_->stop();
 
         // flag all the pending tasks as dead
-        std::for_each(std::begin(tasks), std::end(tasks), [](auto* task) { task->dead = true; });
+        std::ranges::for_each(tasks, [](auto* task) { task->dead = true; });
         tasks.clear();
     }
 
@@ -254,8 +255,8 @@ public:
     void got_piece_data(uint32_t n_bytes)
     {
         auto const now = tr_time_msec();
-        bandwidth_.notify_bandwidth_consumed(TR_DOWN, n_bytes, false, now);
-        bandwidth_.notify_bandwidth_consumed(TR_DOWN, n_bytes, true, now);
+        bandwidth_.notify_bandwidth_consumed(tr_direction::Down, n_bytes, false, now);
+        bandwidth_.notify_bandwidth_consumed(tr_direction::Down, n_bytes, true, now);
         publish(tr_peer_event::GotPieceData(n_bytes));
         connection_limiter.got_data();
     }

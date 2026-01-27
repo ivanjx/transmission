@@ -43,6 +43,7 @@ include(TrMacros)
 
 set(CURL_MINIMUM 7.28.0)
 set(WOLFSSL_MINIMUM 3.4)
+set(CRC32C_MINIMUM 1.1.0)
 set(DEFLATE_MINIMUM 1.7)
 set(EVENT2_MINIMUM 2.1.0)
 set(FMT_MINIMUM 8.0.1)
@@ -53,8 +54,9 @@ set(GTKMM4_MINIMUM 4.11.1)
 set(OPENSSL_MINIMUM 1.1.0)
 set(MBEDTLS_MINIMUM 2.7)
 set(NPM_MINIMUM 10.2.3) # Node.js 20.10 (eslint-plugin-unicorn)
-set(PSL_MINIMUM 0.21.1)
+set(PSL_MINIMUM 0.21.0)
 set(QT_MINIMUM 5.15)
+set(SMALL_MINIMUM 0.2.2)
 
 option(ENABLE_DAEMON "Build daemon" ON)
 tr_auto_option(ENABLE_GTK "Build GTK client" AUTO)
@@ -79,7 +81,9 @@ tr_auto_option(USE_SYSTEM_DHT "Use system dht library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_FMT "Use system fmt library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_MINIUPNPC "Use system miniupnpc library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_NATPMP "Use system natpmp library" ${USE_SYSTEM_DEFAULT})
+tr_auto_option(USE_SYSTEM_SMALL "Use system small library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_UTP "Use system utp library" ${USE_SYSTEM_DEFAULT})
+tr_auto_option(USE_SYSTEM_WIDE_INTEGER "Use system WideInteger library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_B64 "Use system b64 library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_PSL "Use system psl library" ${USE_SYSTEM_DEFAULT})
 tr_auto_option(USE_SYSTEM_CRC32C "Use system crc32c library" ${USE_SYSTEM_DEFAULT})
@@ -247,9 +251,7 @@ set(SOURCE_ICONS_DIR "${PROJECT_SOURCE_DIR}/icons")
 
 find_package(FastFloat)
 find_package(RapidJSON)
-find_package(Small)
 find_package(UtfCpp)
-find_package(WideInteger)
 
 find_package(Threads)
 find_package(PkgConfig QUIET)
@@ -525,7 +527,8 @@ tr_add_external_auto_library_legacy(EVENT2 libevent event
         -DEVENT__DISABLE_SAMPLES:BOOL=ON
         -DEVENT__LIBRARY_TYPE:STRING=STATIC)
 
-tr_add_external_auto_library_legacy(NATPMP libnatpmp natpmp
+tr_add_external_auto_library(NATPMP libnatpmp
+    LIBNAME natpmp
     TARGET natpmp::natpmp
     CMAKE_ARGS
         -DBUILD_SHARED_LIBS=OFF)
@@ -556,10 +559,12 @@ unset(TR_MINIUPNPC_LIBNAME)
 
 add_subdirectory(${TR_THIRD_PARTY_SOURCE_DIR}/wildmat)
 
-tr_add_external_auto_library_legacy(DHT dht dht
+tr_add_external_auto_library(DHT dht
+    LIBNAME dht
     TARGET dht::dht)
 
-tr_add_external_auto_library_legacy(PSL libpsl psl
+tr_add_external_auto_library(PSL libpsl
+    LIBNAME psl
     TARGET psl::psl)
 
 if(ENABLE_UTP)
@@ -575,8 +580,12 @@ tr_add_external_auto_library(B64 libb64
     CMAKE_ARGS
         -DLIBB64_SHARED:BOOL=OFF)
 
-tr_add_external_auto_library_legacy(CRC32C crc32c crc32c
+# Don't build crc32c as subdirectory as its CMakeLists.txt
+# messes with global CMAKE_* variables and global compiler options
+tr_add_external_auto_library(CRC32C Crc32c
     TARGET Crc32c::crc32c
+    LIBNAME crc32c
+    SOURCE_DIR crc32c
     CMAKE_ARGS
         -DCRC32C_BUILD_TESTS=OFF
         -DCRC32C_BUILD_BENCHMARKS=OFF
@@ -588,6 +597,37 @@ tr_add_external_auto_library(FMT fmt
     CMAKE_ARGS
         -DFMT_INSTALL=OFF
         -DFMT_SYSTEM_HEADERS=ON)
+
+tr_add_external_auto_library(SMALL small
+    SUBPROJECT
+    CMAKE_ARGS
+        -DSMALL_BUILD_WITH_EXCEPTIONS=OFF)
+add_library(transmission::small INTERFACE IMPORTED)
+target_link_libraries(transmission::small
+    INTERFACE
+        small::small)
+target_compile_definitions(transmission::small
+    INTERFACE
+        SMALL_DISABLE_EXCEPTIONS=1)
+
+tr_add_external_auto_library(WIDE_INTEGER WideInteger
+    SUBPROJECT
+    SOURCE_DIR wide-integer)
+add_library(transmission::WideInteger INTERFACE IMPORTED)
+target_link_libraries(transmission::WideInteger
+    INTERFACE
+        WideInteger::WideInteger)
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles(
+"int main()
+{
+    unsigned __int128 u;
+    signed __int128 i;
+    return 0;
+}" TR_HAVE_INT128)
+target_compile_definitions(transmission::WideInteger
+    INTERFACE
+        $<$<BOOL:${TR_HAVE_INT128}>:WIDE_INTEGER_HAS_LIMB_TYPE_UINT64>)
 
 set(TR_WEB_ASSETS ${PROJECT_SOURCE_DIR}/web/public_html)
 if(REBUILD_WEB)

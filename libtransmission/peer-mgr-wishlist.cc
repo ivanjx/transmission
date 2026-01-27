@@ -6,6 +6,7 @@
 #include <algorithm> // std::adjacent_find, std::sort
 #include <cstddef>
 #include <functional>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -113,12 +114,12 @@ public:
         std::function<bool(tr_piece_index_t)> const& peer_has_piece);
 
 private:
-    TR_CONSTEXPR20 void dec_replication() noexcept
+    constexpr void dec_replication() noexcept
     {
-        std::for_each(std::begin(candidates_), std::end(candidates_), [](Candidate& candidate) { --candidate.replication; });
+        std::ranges::for_each(candidates_, [](Candidate& candidate) { --candidate.replication; });
     }
 
-    TR_CONSTEXPR20 void dec_replication_bitfield(tr_bitfield const& bitfield)
+    constexpr void dec_replication_bitfield(tr_bitfield const& bitfield)
     {
         if (bitfield.has_none())
         {
@@ -142,9 +143,9 @@ private:
         std::sort(std::begin(candidates_), std::end(candidates_));
     }
 
-    TR_CONSTEXPR20 void inc_replication() noexcept
+    constexpr void inc_replication() noexcept
     {
-        std::for_each(std::begin(candidates_), std::end(candidates_), [](Candidate& candidate) { ++candidate.replication; });
+        std::ranges::for_each(candidates_, [](Candidate& candidate) { ++candidate.replication; });
     }
 
     void inc_replication_bitfield(tr_bitfield const& bitfield)
@@ -171,7 +172,7 @@ private:
         std::sort(std::begin(candidates_), std::end(candidates_));
     }
 
-    TR_CONSTEXPR20 void inc_replication_piece(tr_piece_index_t const piece)
+    constexpr void inc_replication_piece(tr_piece_index_t const piece)
     {
         if (auto iter = find_by_piece(piece); iter != std::end(candidates_))
         {
@@ -182,7 +183,7 @@ private:
 
     // ---
 
-    TR_CONSTEXPR20 void requested_block_span(tr_block_span_t const block_span)
+    constexpr void requested_block_span(tr_block_span_t const block_span)
     {
         for (auto block = block_span.begin; block < block_span.end;)
         {
@@ -209,7 +210,7 @@ private:
         }
     }
 
-    TR_CONSTEXPR20 void reset_block(tr_block_index_t block)
+    constexpr void reset_block(tr_block_index_t block)
     {
         if (auto it_p = find_by_block(block); it_p != std::end(candidates_))
         {
@@ -242,7 +243,7 @@ private:
 
     // ---
 
-    TR_CONSTEXPR20 void client_got_block(tr_block_index_t block)
+    constexpr void client_got_block(tr_block_index_t block)
     {
         if (auto const iter = find_by_block(block); iter != std::end(candidates_))
         {
@@ -306,20 +307,14 @@ private:
 
     // ---
 
-    [[nodiscard]] TR_CONSTEXPR20 CandidateVec::iterator find_by_piece(tr_piece_index_t const piece)
+    [[nodiscard]] constexpr CandidateVec::iterator find_by_piece(tr_piece_index_t const piece)
     {
-        return std::find_if(
-            std::begin(candidates_),
-            std::end(candidates_),
-            [piece](auto const& c) { return c.piece == piece; });
+        return std::ranges::find_if(candidates_, [piece](auto const& c) { return c.piece == piece; });
     }
 
-    [[nodiscard]] TR_CONSTEXPR20 CandidateVec::iterator find_by_block(tr_block_index_t const block)
+    [[nodiscard]] constexpr CandidateVec::iterator find_by_block(tr_block_index_t const block)
     {
-        return std::find_if(
-            std::begin(candidates_),
-            std::end(candidates_),
-            [block](auto const& c) { return c.block_belongs(block); });
+        return std::ranges::find_if(candidates_, [block](auto const& c) { return c.block_belongs(block); });
     }
 
     static constexpr tr_piece_index_t get_salt(
@@ -470,7 +465,7 @@ private:
 
     // ---
 
-    TR_CONSTEXPR20 void remove_piece(tr_piece_index_t const piece)
+    constexpr void remove_piece(tr_piece_index_t const piece)
     {
         if (auto iter = find_by_piece(piece); iter != std::end(candidates_))
         {
@@ -508,7 +503,7 @@ private:
 
     // ---
 
-    TR_CONSTEXPR20 void resort_piece(CandidateVec::iterator const& pos_old)
+    constexpr void resort_piece(CandidateVec::iterator const& pos_old)
     {
         auto const pos_begin = std::begin(candidates_);
 

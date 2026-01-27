@@ -16,6 +16,7 @@
 #include <optional>
 #include <queue>
 #include <ratio>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -337,8 +338,8 @@ public:
 
     ~tr_peerMsgsImpl() override
     {
-        set_active(TR_UP, false);
-        set_active(TR_DOWN, false);
+        set_active(tr_direction::Up, false);
+        set_active(tr_direction::Down, false);
 
         if (io_)
         {
@@ -357,10 +358,10 @@ public:
     {
         switch (dir)
         {
-        case TR_CLIENT_TO_PEER: // requests we sent
+        case tr_direction::ClientToPeer: // requests we sent
             return active_requests.count();
 
-        case TR_PEER_TO_CLIENT: // requests they sent
+        case tr_direction::PeerToClient: // requests they sent
             return std::size(peer_requested_);
 
         default:
@@ -438,7 +439,7 @@ public:
             }
 
             choke_changed_at_ = now;
-            update_active(TR_CLIENT_TO_PEER);
+            update_active(tr_direction::ClientToPeer);
         }
     }
 
@@ -458,7 +459,7 @@ public:
         {
             set_client_interested(interested);
             protocol_send_interest(interested);
-            update_active(TR_PEER_TO_CLIENT);
+            update_active(tr_direction::PeerToClient);
         }
     }
 
@@ -502,24 +503,23 @@ public:
 
     void update_active()
     {
-        update_active(TR_CLIENT_TO_PEER);
-        update_active(TR_PEER_TO_CLIENT);
+        update_active(tr_direction::ClientToPeer);
+        update_active(tr_direction::PeerToClient);
     }
 
     void update_active(tr_direction direction)
     {
-        TR_ASSERT(tr_isDirection(direction));
         set_active(direction, calculate_active(direction));
     }
 
     [[nodiscard]] bool calculate_active(tr_direction direction) const
     {
-        if (direction == TR_CLIENT_TO_PEER)
+        if (direction == tr_direction::ClientToPeer)
         {
             return peer_is_interested() && !peer_is_choked();
         }
 
-        // TR_PEER_TO_CLIENT
+        // tr_direction::PeerToClient
 
         if (!tor_.has_metainfo())
         {
@@ -553,7 +553,7 @@ private:
 
         if (auto const must_send_rej = io_->supports_fext(); must_send_rej)
         {
-            std::for_each(std::begin(queue), std::end(queue), [this](peer_request const& req) { protocol_send_reject(req); });
+            std::ranges::for_each(queue, [this](peer_request const& req) { protocol_send_reject(req); });
         }
 
         queue.clear();
@@ -815,7 +815,7 @@ namespace protocol_send_message_helpers
 }
 
 template<typename T>
-[[nodiscard]] TR_CONSTEXPR20 auto get_param_length(T const& param) noexcept
+[[nodiscard]] constexpr auto get_param_length(T const& param) noexcept
 {
     return std::size(param);
 }
@@ -1484,26 +1484,26 @@ ReadResult tr_peerMsgsImpl::process_peer_message(uint8_t id, MessageReader& payl
             request_timeouts_.clear();
         }
 
-        update_active(TR_PEER_TO_CLIENT);
+        update_active(tr_direction::PeerToClient);
         break;
 
     case BtPeerMsgs::Unchoke:
         logtrace(this, "got Unchoke");
         set_client_choked(false);
-        update_active(TR_PEER_TO_CLIENT);
+        update_active(tr_direction::PeerToClient);
         update_desired_request_count();
         break;
 
     case BtPeerMsgs::Interested:
         logtrace(this, "got Interested");
         set_peer_interested(true);
-        update_active(TR_CLIENT_TO_PEER);
+        update_active(tr_direction::ClientToPeer);
         break;
 
     case BtPeerMsgs::NotInterested:
         logtrace(this, "got Not Interested");
         set_peer_interested(false);
-        update_active(TR_CLIENT_TO_PEER);
+        update_active(tr_direction::ClientToPeer);
         break;
 
     case BtPeerMsgs::Have:
@@ -1555,7 +1555,7 @@ ReadResult tr_peerMsgsImpl::process_peer_message(uint8_t id, MessageReader& payl
             logtrace(this, fmt::format("got a Cancel {:d}:{:d}->{:d}", r.index, r.offset, r.length));
 
             auto& requests = peer_requested_;
-            if (auto iter = std::find(std::begin(requests), std::end(requests), r); iter != std::end(requests))
+            if (auto iter = std::ranges::find(requests, r); iter != std::ranges::end(requests))
             {
                 requests.erase(iter);
 
@@ -1925,7 +1925,7 @@ void tr_peerMsgsImpl::maybe_send_block_requests()
         return;
     }
 
-    auto const n_active = active_req_count(TR_CLIENT_TO_PEER);
+    auto const n_active = active_req_count(tr_direction::ClientToPeer);
     if (n_active >= desired_request_count_)
     {
         return;
@@ -1943,7 +1943,7 @@ void tr_peerMsgsImpl::maybe_send_block_requests()
 
 void tr_peerMsgsImpl::check_request_timeout(time_t const now)
 {
-    std::sort(std::begin(request_timeouts_), std::end(request_timeouts_));
+    std::ranges::sort(request_timeouts_);
 
     for (auto it = std::begin(request_timeouts_); it != std::end(request_timeouts_);)
     {
@@ -2153,16 +2153,16 @@ size_t tr_peerMsgsImpl::max_available_reqs() const
     // Get the rate limit we should use.
     // TODO: this needs to consider all the other peers as well...
     uint64_t const now = tr_time_msec();
-    auto rate = get_piece_speed(now, TR_PEER_TO_CLIENT);
-    if (tor_.uses_speed_limit(TR_PEER_TO_CLIENT))
+    auto rate = get_piece_speed(now, tr_direction::PeerToClient);
+    if (tor_.uses_speed_limit(tr_direction::PeerToClient))
     {
-        rate = std::min(rate, tor_.speed_limit(TR_PEER_TO_CLIENT));
+        rate = std::min(rate, tor_.speed_limit(tr_direction::PeerToClient));
     }
 
     // honor the session limits, if enabled
     if (tor_.uses_session_limits())
     {
-        if (auto const limit = session->active_speed_limit(TR_PEER_TO_CLIENT))
+        if (auto const limit = session->active_speed_limit(tr_direction::PeerToClient))
         {
             rate = std::min(rate, *limit);
         }

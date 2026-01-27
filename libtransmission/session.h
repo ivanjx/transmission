@@ -266,7 +266,7 @@ private:
         [[nodiscard]] std::optional<std::string_view> userAgent() const override;
         [[nodiscard]] size_t clamp(int torrent_id, size_t byte_count) const override;
         [[nodiscard]] std::optional<std::string> proxyUrl() const override;
-        [[nodiscard]] time_t now() const override;
+        [[nodiscard]] std::chrono::steady_clock::time_point now() const override;
         // runs the tr_web::fetch response callback in the libtransmission thread
         void run(tr_web::FetchDoneFunc&& func, tr_web::FetchResponse&& response) const override;
 
@@ -748,11 +748,6 @@ public:
         return settings().peer_congestion_algorithm;
     }
 
-    void setPeerCongestionAlgorithm(std::string_view algorithm)
-    {
-        settings_.peer_congestion_algorithm = algorithm;
-    }
-
     void setSocketDiffServ(tr_socket_t sock, tr_address_type type) const
     {
         tr_netSetDiffServ(sock, settings_.peer_socket_diffserv, type);
@@ -813,11 +808,6 @@ public:
     [[nodiscard]] constexpr std::string const& announceIP() const noexcept
     {
         return settings().announce_ip;
-    }
-
-    void setAnnounceIP(std::string_view ip)
-    {
-        settings_.announce_ip = ip;
     }
 
     [[nodiscard]] constexpr bool useAnnounceIP() const noexcept
@@ -949,12 +939,12 @@ public:
 
     [[nodiscard]] constexpr auto queueEnabled(tr_direction dir) const noexcept
     {
-        return dir == TR_DOWN ? settings_.download_queue_enabled : settings_.seed_queue_enabled;
+        return dir == tr_direction::Down ? settings_.download_queue_enabled : settings_.seed_queue_enabled;
     }
 
     [[nodiscard]] constexpr auto queueSize(tr_direction dir) const noexcept
     {
-        return dir == TR_DOWN ? settings_.download_queue_size : settings_.seed_queue_size;
+        return dir == tr_direction::Down ? settings_.download_queue_size : settings_.seed_queue_size;
     }
 
     [[nodiscard]] constexpr auto queueStalledEnabled() const noexcept
@@ -1139,20 +1129,20 @@ public:
 
     [[nodiscard]] auto speed_limit(tr_direction const dir) const noexcept
     {
-        auto const kbyps = dir == TR_DOWN ? settings_.speed_limit_down : settings_.speed_limit_up;
+        auto const kbyps = dir == tr_direction::Down ? settings_.speed_limit_down : settings_.speed_limit_up;
         return Speed{ kbyps, Speed::Units::KByps };
     }
 
     void set_speed_limit(tr_direction dir, Speed limit) noexcept
     {
-        auto& tgt = dir == TR_DOWN ? settings_.speed_limit_down : settings_.speed_limit_up;
+        auto& tgt = dir == tr_direction::Down ? settings_.speed_limit_down : settings_.speed_limit_up;
         tgt = limit.count(Speed::Units::KByps);
         update_bandwidth(dir);
     }
 
     [[nodiscard]] constexpr auto is_speed_limited(tr_direction dir) const noexcept
     {
-        return dir == TR_DOWN ? settings_.speed_limit_down_enabled : settings_.speed_limit_up_enabled;
+        return dir == tr_direction::Down ? settings_.speed_limit_down_enabled : settings_.speed_limit_up_enabled;
     }
 
     [[nodiscard]] auto piece_speed(tr_direction dir) const noexcept
@@ -1274,7 +1264,7 @@ private:
     friend std::string tr_sessionGetRPCUsername(tr_session const* session);
     friend std::string tr_sessionGetRPCWhitelist(tr_session const* session);
     friend size_t tr_blocklistGetRuleCount(tr_session const* session);
-    friend size_t tr_blocklistSetContent(tr_session* session, char const* content_filename);
+    friend size_t tr_blocklistSetContent(tr_session* session, std::string_view content_filename);
     friend size_t tr_sessionGetAltSpeedBegin(tr_session const* session);
     friend size_t tr_sessionGetAltSpeedEnd(tr_session const* session);
     friend size_t tr_sessionGetCacheLimit_MB(tr_session const* session);
