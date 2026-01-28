@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #define LIBTRANSMISSION_VARIANT_MODULE
 
 #include <libtransmission/benc.h>
@@ -735,8 +737,7 @@ TEST_F(VariantTest, visitsNodesDepthFirst)
         node.visit(
             [&](auto const& val)
             {
-                // TODO(c++20): use std::remove_cvref_t (P0550R2) when GCC >= 9.1
-                using ValueType = std::decay_t<decltype(val)>;
+                using ValueType = std::remove_cvref_t<decltype(val)>;
 
                 if constexpr (
                     std::is_same_v<ValueType, bool> || //
