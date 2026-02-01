@@ -234,16 +234,14 @@ void announce_url_new(tr_urlbuf& url, tr_session const* session, tr_announce_req
 
     if (auto ipv4_addr = session->global_address(TR_AF_INET); ipv4_addr)
     {
-        auto buf = std::array<char, INET_ADDRSTRLEN>{};
-        auto const display_name = ipv4_addr->display_name(std::data(buf), std::size(buf));
+        auto const display_name = ipv4_addr->display_name();
         fmt::format_to(out, "&ipv4=");
         tr_urlPercentEncode(out, display_name);
     }
 
     if (auto ipv6_addr = session->global_address(TR_AF_INET6); ipv6_addr)
     {
-        auto buf = std::array<char, INET6_ADDRSTRLEN>{};
-        auto const display_name = ipv6_addr->display_name(std::data(buf), std::size(buf));
+        auto const display_name = ipv6_addr->display_name();
         fmt::format_to(out, "&ipv6=");
         tr_urlPercentEncode(out, display_name);
     }
@@ -325,9 +323,9 @@ void tr_announcerParseHttpAnnounceResponse(tr_announce_response& response, std::
 {
     verboseLog("Announce response:", tr_direction::Down, benc);
 
-    struct AnnounceHandler final : public transmission::benc::BasicHandler<MaxBencDepth>
+    struct AnnounceHandler final : public tr::benc::BasicHandler<MaxBencDepth>
     {
-        using BasicHandler = transmission::benc::BasicHandler<MaxBencDepth>;
+        using BasicHandler = tr::benc::BasicHandler<MaxBencDepth>;
 
         tr_announce_response& response_;
         std::string_view const log_name_;
@@ -443,10 +441,10 @@ void tr_announcerParseHttpAnnounceResponse(tr_announce_response& response, std::
         }
     };
 
-    auto stack = transmission::benc::ParserStack<MaxBencDepth>{};
+    auto stack = tr::benc::ParserStack<MaxBencDepth>{};
     auto handler = AnnounceHandler{ response, log_name };
     auto error = tr_error{};
-    transmission::benc::parse(benc, stack, handler, nullptr, &error);
+    tr::benc::parse(benc, stack, handler, nullptr, &error);
     if (error)
     {
         tr_logAddWarn(
@@ -566,9 +564,9 @@ void tr_announcerParseHttpScrapeResponse(tr_scrape_response& response, std::stri
 {
     verboseLog("Scrape response:", tr_direction::Down, benc);
 
-    struct ScrapeHandler final : public transmission::benc::BasicHandler<MaxBencDepth>
+    struct ScrapeHandler final : public tr::benc::BasicHandler<MaxBencDepth>
     {
-        using BasicHandler = transmission::benc::BasicHandler<MaxBencDepth>;
+        using BasicHandler = tr::benc::BasicHandler<MaxBencDepth>;
 
         tr_scrape_response& response_;
         std::string_view const log_name_;
@@ -662,10 +660,10 @@ void tr_announcerParseHttpScrapeResponse(tr_scrape_response& response, std::stri
         }
     };
 
-    auto stack = transmission::benc::ParserStack<MaxBencDepth>{};
+    auto stack = tr::benc::ParserStack<MaxBencDepth>{};
     auto handler = ScrapeHandler{ response, log_name };
     auto error = tr_error{};
-    transmission::benc::parse(benc, stack, handler, nullptr, &error);
+    tr::benc::parse(benc, stack, handler, nullptr, &error);
     if (error)
     {
         tr_logAddWarn(

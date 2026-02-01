@@ -54,18 +54,18 @@ void tr_torrentFreeInSessionThread(tr_torrent* tor);
 
 void tr_torrentChangeMyPort(tr_torrent* tor);
 
-namespace libtransmission::test
+namespace tr::test
 {
 
 class RenameTest_multifileTorrent_Test;
 class RenameTest_singleFilenameTorrent_Test;
 
-} // namespace libtransmission::test
+} // namespace tr::test
 
 /** @brief Torrent object */
 struct tr_torrent
 {
-    using Speed = libtransmission::Values::Speed;
+    using Speed = tr::Values::Speed;
 
     class ResumeHelper
     {
@@ -91,8 +91,8 @@ struct tr_torrent
         [[nodiscard]] bool start_when_stable() const noexcept;
 
     private:
-        friend class libtransmission::test::RenameTest_multifileTorrent_Test;
-        friend class libtransmission::test::RenameTest_singleFilenameTorrent_Test;
+        friend class tr::test::RenameTest_multifileTorrent_Test;
+        friend class tr::test::RenameTest_singleFilenameTorrent_Test;
         friend struct tr_torrent;
 
         explicit ResumeHelper(tr_torrent& tor)
@@ -991,9 +991,15 @@ struct tr_torrent
         return session->torrent_queue().get_pos(id());
     }
 
-    void set_queue_position(size_t new_pos) // NOLINT(readability-make-member-function-const)
+    void set_queue_position(size_t const new_pos) // NOLINT(readability-make-member-function-const)
     {
-        session->torrent_queue().set_pos(id(), new_pos);
+        for (auto const& changed_id : session->torrent_queue().set_pos(id(), new_pos))
+        {
+            if (auto* const tor = session->torrents().get(changed_id))
+            {
+                tor->mark_changed();
+            }
+        }
     }
 
     static constexpr struct
@@ -1006,18 +1012,18 @@ struct tr_torrent
 
     // ---
 
-    libtransmission::SimpleObservable<tr_torrent*, bool /*because_downloaded_last_piece*/> done_;
-    libtransmission::SimpleObservable<tr_torrent*, tr_piece_index_t> got_bad_piece_;
-    libtransmission::SimpleObservable<tr_torrent*, tr_piece_index_t> piece_completed_;
-    libtransmission::SimpleObservable<tr_torrent*> doomed_;
-    libtransmission::SimpleObservable<tr_torrent*> got_metainfo_;
-    libtransmission::SimpleObservable<tr_torrent*> started_;
-    libtransmission::SimpleObservable<tr_torrent*> stopped_;
-    libtransmission::SimpleObservable<tr_torrent*> swarm_is_all_upload_only_;
-    libtransmission::SimpleObservable<tr_torrent*, tr_file_index_t const*, tr_file_index_t, bool> files_wanted_changed_;
-    libtransmission::SimpleObservable<tr_torrent*, tr_file_index_t const*, tr_file_index_t, tr_priority_t> priority_changed_;
-    libtransmission::SimpleObservable<tr_torrent*, bool> sequential_download_changed_;
-    libtransmission::SimpleObservable<tr_torrent*, tr_piece_index_t> sequential_download_from_piece_changed_;
+    tr::SimpleObservable<tr_torrent*, bool /*because_downloaded_last_piece*/> done_;
+    tr::SimpleObservable<tr_torrent*, tr_piece_index_t> got_bad_piece_;
+    tr::SimpleObservable<tr_torrent*, tr_piece_index_t> piece_completed_;
+    tr::SimpleObservable<tr_torrent*> doomed_;
+    tr::SimpleObservable<tr_torrent*> got_metainfo_;
+    tr::SimpleObservable<tr_torrent*> started_;
+    tr::SimpleObservable<tr_torrent*> stopped_;
+    tr::SimpleObservable<tr_torrent*> swarm_is_all_upload_only_;
+    tr::SimpleObservable<tr_torrent*, tr_file_index_t const*, tr_file_index_t, bool> files_wanted_changed_;
+    tr::SimpleObservable<tr_torrent*, tr_file_index_t const*, tr_file_index_t, tr_priority_t> priority_changed_;
+    tr::SimpleObservable<tr_torrent*, bool> sequential_download_changed_;
+    tr::SimpleObservable<tr_torrent*, tr_piece_index_t> sequential_download_from_piece_changed_;
 
     CumulativeCount bytes_corrupt_;
     CumulativeCount bytes_downloaded_;
@@ -1034,8 +1040,8 @@ struct tr_torrent
 private:
     friend bool tr_torrentSetMetainfoFromFile(tr_torrent* tor, tr_torrent_metainfo const* metainfo, char const* filename);
     friend tr_file_view tr_torrentFile(tr_torrent const* tor, tr_file_index_t file);
-    friend tr_stat const* tr_torrentStat(tr_torrent* tor);
-    friend std::vector<tr_stat const*> tr_torrentStat(tr_torrent* const* torrents, size_t n_torrents);
+    friend tr_stat tr_torrentStat(tr_torrent* tor);
+    friend std::vector<tr_stat> tr_torrentStat(tr_torrent* const* torrents, size_t n_torrents);
     friend tr_torrent* tr_torrentNew(tr_ctor* ctor, tr_torrent** setme_duplicate_of);
     friend uint64_t tr_torrentGetBytesLeftToAllocate(tr_torrent const* tor);
     friend void tr_torrentFreeInSessionThread(tr_torrent* tor);
@@ -1071,12 +1077,22 @@ private:
     public:
         [[nodiscard]] constexpr auto empty() const noexcept
         {
-            return error_type_ == TR_STAT_OK;
+            return error_type_ == tr_stat::Error::Ok;
         }
 
         [[nodiscard]] constexpr auto error_type() const noexcept
         {
             return error_type_;
+        }
+
+        [[nodiscard]] constexpr auto is_local_error() const noexcept
+        {
+            return error_type_ == tr_stat::Error::LocalError;
+        }
+
+        [[nodiscard]] constexpr auto is_tracker() const noexcept
+        {
+            return error_type_ == tr_stat::Error::TrackerError || error_type_ == tr_stat::Error::TrackerWarning;
         }
 
         [[nodiscard]] constexpr auto const& announce_url() const noexcept
@@ -1099,7 +1115,7 @@ private:
     private:
         tr_interned_string announce_url_; // the source for tracker errors/warnings
         std::string errmsg_;
-        tr_stat_errtype error_type_ = TR_STAT_OK;
+        tr_stat::Error error_type_ = tr_stat::Error::Ok;
     };
 
     // Helper class to smooth out speed estimates.
@@ -1337,7 +1353,7 @@ private:
 
     [[nodiscard]] bool is_new_torrent_a_seed();
 
-    tr_stat stats_ = {};
+    //tr_stat stats_ = {};
 
     Error error_;
 

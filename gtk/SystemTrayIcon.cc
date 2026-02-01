@@ -49,7 +49,7 @@
 #endif
 
 using namespace std::literals;
-using namespace libtransmission::Values;
+using namespace tr::Values;
 
 namespace
 {
@@ -114,7 +114,7 @@ SystemTrayIcon::Impl::~Impl() = default;
 
 void SystemTrayIcon::Impl::activated()
 {
-    gtr_action_activate(GTR_KEY_toggle_main_window);
+    gtr_action_activate("toggle-main-window");
 }
 
 void SystemTrayIcon::Impl::popup(guint /*button*/, guint /*when*/)

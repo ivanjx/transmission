@@ -55,7 +55,6 @@ target_sources(${TR_NAME}
         error-types.h
         error.cc
         error.h
-        file-capacity.cc
         file-piece-map.cc
         file-piece-map.h
         file-posix.cc
@@ -201,8 +200,6 @@ tr_allow_compile_if(
         crypto-utils-openssl.cc
     [=[[CRYPTO_PKG STREQUAL "wolfssl"]]=]
         crypto-utils-wolfssl.cc
-    [=[[ENABLE_UTP]]=]
-        tr-utp.cc
     [=[[WITH_INOTIFY]]=]
         watchdir-inotify.cc
     [=[[WITH_KQUEUE]]=]
@@ -235,19 +232,12 @@ target_compile_definitions(${TR_NAME}
         $<$<STREQUAL:${CRYPTO_PKG},wolfssl>:WITH_WOLFSSL>
         $<$<BOOL:${Intl_FOUND}>:ENABLE_GETTEXT>)
 
-tr_target_compile_definitions_for_headers(${TR_NAME}
-    PRIVATE
-        sys/statvfs.h
-        xfs/xfs.h
-        xlocale.h)
-
 tr_target_compile_definitions_for_functions(${TR_NAME}
     PRIVATE
         copyfile
         copy_file_range
         fallocate64
         flock
-        getmntent
         htonll
         mkdtemp
         ntohll
@@ -255,8 +245,7 @@ tr_target_compile_definitions_for_functions(${TR_NAME}
         posix_fallocate
         pread
         pwrite
-        sendfile64
-        statvfs)
+        sendfile64)
 
 target_include_directories(${TR_NAME}
     PUBLIC
@@ -276,9 +265,9 @@ target_link_libraries(${TR_NAME}
         FastFloat::fast_float
         psl::psl
         natpmp::natpmp
-        miniupnpc::libminiupnpc
+        miniupnpc::miniupnpc
         dht::dht
-        libutp::libutp
+        $<$<BOOL:${ENABLE_UTP}>:libutp::libutp>
         libb64::libb64
         ${Intl_LIBRARIES}
         ${LIBM_LIBRARY}

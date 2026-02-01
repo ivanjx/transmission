@@ -20,7 +20,7 @@
 #include "libtransmission/utils.h"
 #include "libtransmission/variant.h"
 
-namespace libtransmission::api_compat
+namespace tr::api_compat
 {
 namespace
 {
@@ -1053,4 +1053,4 @@ void convert_incoming_data(tr_variant& var)
 {
     convert(var, Style::Tr5);
 }
-} // namespace libtransmission::api_compat
+} // namespace tr::api_compat
