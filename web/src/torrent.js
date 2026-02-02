@@ -210,6 +210,9 @@ export class Torrent extends EventTarget {
   getPrivateFlag() {
     return this.fields.is_private;
   }
+  getBandwidthPriority() {
+    return this.fields.bandwidth_priority;
+  }
   getQueuePosition() {
     return this.fields.queue_position;
   }
@@ -381,6 +384,12 @@ export class Torrent extends EventTarget {
         return this.isStopped();
       case Prefs.FilterFinished:
         return this.isFinished();
+      case Prefs.FilterLowPriority:
+        return this.getBandwidthPriority() === -1;
+      case Prefs.FilterNormalPriority:
+        return this.getBandwidthPriority() === 0;
+      case Prefs.FilterHighPriority:
+        return this.getBandwidthPriority() === 1;
       default:
         return true;
     }
@@ -604,6 +613,7 @@ Torrent.Fields.Metadata = [
 
 // commonly used fields which need to be periodically refreshed
 Torrent.Fields.Stats = [
+  'bandwidth_priority',
   'error',
   'error_string',
   'eta',

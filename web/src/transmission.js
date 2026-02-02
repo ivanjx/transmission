@@ -239,6 +239,11 @@ export class Transmission extends EventTarget {
       ['Finished', Prefs.FilterFinished],
       ['Error', Prefs.FilterError],
     ]);
+    newOpts(e, 'priority', [
+      ['Low Priority', Prefs.FilterLowPriority],
+      ['Normal Priority', Prefs.FilterNormalPriority],
+      ['High Priority', Prefs.FilterHighPriority],
+    ]);
     newOpts(e, 'list', [
       ['Private torrents', Prefs.FilterPrivate],
       ['Public torrents', Prefs.FilterPublic],
