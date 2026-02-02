@@ -887,13 +887,14 @@ export class Inspector extends EventTarget {
 
   _onFilePriorityToggled(event_) {
     const { indices, priority } = event_;
+    const priorityValue = Number(priority);
 
     let command = null;
-    switch (priority.toString()) {
-      case '-1':
+    switch (priorityValue) {
+      case -1:
         command = 'priority_low';
         break;
-      case '1':
+      case 1:
         command = 'priority_high';
         break;
       default:
@@ -901,6 +902,21 @@ export class Inspector extends EventTarget {
     }
 
     this._changeFileCommand(indices, command);
+
+    // If this affects the entire torrent (only file or root folder), also update torrent bandwidth priority
+    if (this.torrents.length === 1) {
+      const [tor] = this.torrents;
+      const totalFiles = tor.getFiles().length;
+      const affectsEntireTorrent = indices.length === totalFiles || totalFiles === 1 || indices.length === 0;
+
+      if (affectsEntireTorrent) {
+        this.controller.changeFileCommand(
+          tor.getId(),
+          priorityValue,
+          'bandwidth_priority',
+        );
+      }
+    }
   }
 
   _clearFileList() {
