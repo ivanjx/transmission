@@ -79,12 +79,12 @@ export class Remote {
         console.trace(error);
         this._controller.togglePeriodicSessionRefresh(false);
 
-        this._connection_alert = new AlertDialog({
-          heading: 'Connection failed',
-          message:
-            'Could not connect to the server. You may need to reload the page to reconnect.',
-        });
-        this._controller.setCurrentPopup(this._connection_alert);
+        // this._connection_alert = new AlertDialog({
+        //   heading: 'Connection failed',
+        //   message:
+        //     'Could not connect to the server. You may need to reload the page to reconnect.',
+        // });
+        // this._controller.setCurrentPopup(this._connection_alert);
       });
   }
 
