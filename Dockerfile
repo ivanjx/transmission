@@ -20,12 +20,13 @@ RUN set -ex && \
 WORKDIR /app
 COPY . .
 
+ARG TARGETPLATFORM
 ENV CCACHE_DIR=/root/.ccache
 ENV CCACHE_BASEDIR=/app
 ENV CCACHE_COMPILERCHECK=content
 
-RUN --mount=type=cache,id=transmission-ccache,target=/root/.ccache \
-    --mount=type=cache,id=transmission-obj,target=/app/obj \
+RUN --mount=type=cache,id=transmission-ccache-${TARGETPLATFORM},target=/root/.ccache \
+    --mount=type=cache,id=transmission-obj-${TARGETPLATFORM},target=/app/obj \
     ccache -z && \
     cmake -S . -B obj -G Ninja \
         -D CMAKE_BUILD_TYPE=Release \
