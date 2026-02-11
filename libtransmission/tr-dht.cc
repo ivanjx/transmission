@@ -606,9 +606,8 @@ private:
             {
                 tr_logAddDebug(
                     fmt::format(
-                        fmt::runtime(_("Resolved bootstrap node '{address}:{port}'")),
-                        fmt::arg("address", infop->ai_addr),
-                        fmt::arg("port", port_in.host())));
+                        fmt::runtime(_("Resolved bootstrap node '{address}'")),
+                        fmt::arg("address", addrport->address().display_name())));
                 nodes.emplace_back(*addrport);
             }
         }
