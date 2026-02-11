@@ -19,6 +19,11 @@ const peer_column_classes = [
   'peer-country',
 ];
 
+const webseed_column_classes = [
+  '',
+  'speed-down'
+];
+
 export class Inspector extends EventTarget {
   // Simple cache for IP -> country code mappings
   static _countryCache = new Map();
@@ -150,8 +155,9 @@ export class Inspector extends EventTarget {
     const webseedsThead = document.createElement('thead');
     const webseedsTr = document.createElement('tr');
     const webseedsHeaders = ['Web Seeds', 'Down'];
-    for (const name of webseedsHeaders) {
+    for (const [index, name] of webseedsHeaders.entries()) {
       const th = document.createElement('th');
+      th.classList.add(webseed_column_classes[index]);
       setTextContent(th, name);
       webseedsTr.append(th);
     }
@@ -679,12 +685,10 @@ export class Inspector extends EventTarget {
 
     const webseed_cell_setters = [
       (webseed, td) => {
-        td.classList.add('webseed-url');
         setTextContent(td, webseed.url);
         td.setAttribute('title', webseed.url);
       },
       (webseed, td) => {
-        td.classList.add('speed-down');
         setTextContent(
           td,
           webseed.download_bytes_per_second
@@ -711,15 +715,16 @@ export class Inspector extends EventTarget {
       if (webseeds.length > 0) {
         hasWebseeds = true;
         const tortr = baseTortr.cloneNode(true);
-        tortr.firstChild.setAttribute('colspan', 2);
+        tortr.firstChild.setAttribute('colspan', webseed_cell_setters.length);
         webseedsRows.push(tortr);
 
         // webseed rows
         for (const webseed of webseeds) {
           const tr = document.createElement('tr');
           tr.classList.add('webseed-row');
-          for (const setter of webseed_cell_setters) {
+          for (const [index, setter] of webseed_cell_setters.entries()) {
             const td = document.createElement('td');
+            td.classList.add(webseed_column_classes[index]);
             setter(webseed, td);
             tr.append(td);
           }
