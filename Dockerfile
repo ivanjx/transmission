@@ -7,6 +7,7 @@ RUN set -ex && \
 		git \
 		python3 \
 		build-base \
+		ccache \
 		cmake \
 		curl-dev \
 		gettext-dev \
@@ -18,11 +19,15 @@ RUN set -ex && \
 
 COPY . .
 
-RUN cmake \
+ENV CCACHE_DIR=/root/.ccache
+
+RUN --mount=type=cache,target=/root/.ccache cmake \
 			-S . \
 			-B obj \
 			-G Ninja \
 			-D CMAKE_BUILD_TYPE=Release \
+			-D CMAKE_C_COMPILER_LAUNCHER=ccache \
+			-D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
 			-D ENABLE_CLI=OFF \
 			-D ENABLE_DAEMON=ON \
 			-D ENABLE_GTK=OFF \

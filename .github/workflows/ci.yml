@@ -42,5 +42,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/ivanjx/transmission:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=transmission-build
+          cache-to: type=gha,mode=max,scope=transmission-build
