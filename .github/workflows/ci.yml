@@ -69,6 +69,6 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           provenance: false
-          tags: ghcr.io/ivanjx/transmission:${{ github.ref_name }}
+          tags: ghcr.io/ivanjx/transmission:${{ github.ref_name }}${{ matrix.platform == 'linux/arm64' && '-arm64' || '' }}
           cache-from: type=gha,scope=transmission-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=transmission-${{ matrix.platform }}
