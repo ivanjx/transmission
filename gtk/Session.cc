@@ -93,7 +93,7 @@ public:
 
     void remove_torrent(tr_torrent_id_t id, bool delete_files);
 
-    void send_rpc_request(tr_quark method, tr_variant const& params, std::function<void(tr_variant&)> on_response);
+    void send_rpc_request(tr_quark method, tr_variant&& params, std::function<void(tr_variant&)> on_response);
 
     void commit_prefs_change(tr_quark key);
 
@@ -171,8 +171,6 @@ private:
 
     void on_torrent_completeness_changed(tr_torrent* tor, tr_completeness completeness, bool was_running);
     void on_torrent_metadata_changed(tr_torrent* raw_torrent);
-
-    void on_torrent_removal_done(tr_torrent_id_t id, bool succeeded);
 
 private:
     Session& core_;
@@ -928,30 +926,11 @@ void Session::remove_torrent(tr_torrent_id_t id, bool delete_files)
 
 void Session::Impl::remove_torrent(tr_torrent_id_t const id, bool const delete_files)
 {
-    auto const& [torrent, _] = find_torrent_by_id(id);
-    if (!torrent)
-    {
-        return;
-    }
-
-    auto const on_remove_done = [core = get_core_ptr()](tr_torrent_id_t const removed_id, bool const ok)
-    {
-        Glib::signal_idle().connect_once([core, removed_id, ok]() { core->impl_->on_torrent_removal_done(removed_id, ok); });
-    };
-
-    tr_torrentRemove(&torrent->get_underlying(), delete_files, gtr_file_trash_or_remove, std::move(on_remove_done));
-}
-
-void Session::Impl::on_torrent_removal_done(tr_torrent_id_t id, bool succeeded)
-{
-    if (!succeeded)
-    {
-        return;
-    }
-
     if (auto const& [torrent, position] = find_torrent_by_id(id); torrent)
     {
         get_raw_model()->remove(position);
+
+        tr_torrentRemove(&torrent->get_underlying(), delete_files, gtr_file_trash_or_remove);
     }
 }
 
@@ -1140,52 +1119,6 @@ void Session::Impl::maybe_inhibit_hibernation()
     set_hibernation_allowed(hibernation_allowed);
 }
 
-/**
-***  Prefs
-**/
-
-void Session::Impl::commit_prefs_change(tr_quark const key)
-{
-    signal_prefs_changed_.emit(key);
-    gtr_pref_save(session_);
-}
-
-void Session::set_pref(tr_quark const key, std::string const& newval)
-{
-    if (newval != gtr_pref_string_get(key))
-    {
-        gtr_pref_string_set(key, newval);
-        impl_->commit_prefs_change(key);
-    }
-}
-
-void Session::set_pref(tr_quark const key, bool newval)
-{
-    if (newval != gtr_pref_flag_get(key))
-    {
-        gtr_pref_flag_set(key, newval);
-        impl_->commit_prefs_change(key);
-    }
-}
-
-void Session::set_pref(tr_quark const key, int newval)
-{
-    if (newval != gtr_pref_int_get(key))
-    {
-        gtr_pref_int_set(key, newval);
-        impl_->commit_prefs_change(key);
-    }
-}
-
-void Session::set_pref(tr_quark const key, double newval)
-{
-    if (std::fabs(newval - gtr_pref_double_get(key)) >= 0.0001)
-    {
-        gtr_pref_double_set(key, newval);
-        impl_->commit_prefs_change(key);
-    }
-}
-
 /***
 ****
 ****  RPC Interface
@@ -1234,10 +1167,7 @@ void core_read_rpc_response(tr_variant&& response)
 
 } // namespace
 
-void Session::Impl::send_rpc_request(
-    tr_quark const method,
-    tr_variant const& params,
-    std::function<void(tr_variant&)> on_response)
+void Session::Impl::send_rpc_request(tr_quark const method, tr_variant&& params, std::function<void(tr_variant&)> on_response)
 {
     if (session_ == nullptr)
     {
@@ -1253,7 +1183,7 @@ void Session::Impl::send_rpc_request(
     // add params if there are any
     if (params.has_value())
     {
-        reqmap.try_emplace(TR_KEY_params, params.clone());
+        reqmap.try_emplace(TR_KEY_params, std::move(params));
     }
 
     // add id if we want a response
@@ -1367,9 +1297,9 @@ void Session::blocklist_update()
 
 // ---
 
-void Session::exec(tr_quark method, tr_variant const& params)
+void Session::exec(tr_quark method, tr_variant&& params)
 {
-    impl_->send_rpc_request(method, params, {});
+    impl_->send_rpc_request(method, std::move(params), {});
 }
 
 /***
