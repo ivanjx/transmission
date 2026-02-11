@@ -220,6 +220,16 @@ private:
             return session_.timerMaker();
         }
 
+        [[nodiscard]] std::optional<tr_address> gateway_address() const override
+        {
+            if (auto const addr = session_.settings_.gateway_address)
+            {
+                return tr_address::from_string(*addr);
+            }
+
+            return {};
+        }
+
         void on_port_forwarded(tr_port public_port) override
         {
             if (session_.advertised_peer_port_ != public_port)
@@ -464,6 +474,7 @@ public:
         };
         std::chrono::milliseconds sleep_per_seconds_during_verify = std::chrono::milliseconds{ 100 };
         std::optional<std::string> proxy_url;
+        std::optional<std::string> gateway_address;
         std::string announce_ip;
         std::string bind_address_ipv4;
         std::string bind_address_ipv6;
@@ -523,6 +534,7 @@ public:
             Field<&Settings::preallocation_mode>{ TR_KEY_preallocation },
             Field<&Settings::preferred_transports>{ TR_KEY_preferred_transports },
             Field<&Settings::proxy_url>{ TR_KEY_proxy_url },
+            Field<&Settings::gateway_address>{ TR_KEY_gateway_address },
             Field<&Settings::queue_stalled_enabled>{ TR_KEY_queue_stalled_enabled },
             Field<&Settings::queue_stalled_minutes>{ TR_KEY_queue_stalled_minutes },
             Field<&Settings::ratio_limit>{ TR_KEY_ratio_limit },

@@ -10,6 +10,8 @@
 #endif
 
 #include <memory> // for std::unique_ptr
+#include <optional>
+#include <string>
 
 #include "libtransmission/transmission.h" // for tr_port_forwarding_state
 
@@ -32,6 +34,7 @@ public:
         [[nodiscard]] virtual tr_port local_peer_port() const = 0;
         [[nodiscard]] virtual tr_address incoming_peer_address() const = 0;
         [[nodiscard]] virtual tr::TimerMaker& timer_maker() = 0;
+        [[nodiscard]] virtual std::optional<tr_address> gateway_address() const = 0;
         virtual void on_port_forwarded(tr_port advertised_port) = 0;
     };
 

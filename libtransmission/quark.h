@@ -227,6 +227,7 @@ enum // NOLINT(performance-enum-size)
     TR_KEY_from_ltep,
     TR_KEY_from_pex,
     TR_KEY_from_tracker,
+    TR_KEY_gateway_address,
     TR_KEY_group,
     TR_KEY_group_get_kebab_APICOMPAT,
     TR_KEY_group_set_kebab_APICOMPAT,

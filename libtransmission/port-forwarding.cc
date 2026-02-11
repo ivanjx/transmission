@@ -182,7 +182,7 @@ private:
 
         if (!natpmp_)
         {
-            natpmp_ = std::make_unique<tr_natpmp>();
+            natpmp_ = std::make_unique<tr_natpmp>(mediator_.gateway_address());
         }
 
         if (upnp_ == nullptr)
