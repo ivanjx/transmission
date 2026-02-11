@@ -50,17 +50,6 @@
 
 using namespace std::literals;
 
-namespace
-{
-
-constexpr std::array<std::pair<char const*, uint16_t>, 3> const default_bootstraps = { {
-    { "dht.transmissionbt.com", 6881 },
-    { "router.bittorrent.com", 6881 },
-    { "dht.libtorrent.org", 25401 },
-} };
-
-}
-
 // the dht library needs us to implement these:
 extern "C"
 {
@@ -121,6 +110,17 @@ extern "C"
 #endif
 
 } // extern "C"
+
+namespace
+{
+
+constexpr std::array<std::pair<char const*, uint16_t>, 3> const default_bootstraps = { {
+    { "dht.transmissionbt.com", 6881 },
+    { "router.bittorrent.com", 6881 },
+    { "dht.libtorrent.org", 25401 },
+} };
+
+}
 
 class tr_dht_impl final : public tr_dht
 {
@@ -604,6 +604,11 @@ private:
         {
             if (auto addrport = tr_socket_address::from_sockaddr(infop->ai_addr); addrport)
             {
+                tr_logAddDebug(
+                    fmt::format(
+                        fmt::runtime(_("Resolved bootstrap node '{address}:{port}'")),
+                        fmt::arg("address", infop->ai_addr),
+                        fmt::arg("port", port_in.host())));
                 nodes.emplace_back(*addrport);
             }
         }
