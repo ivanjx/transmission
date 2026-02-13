@@ -713,9 +713,8 @@ export class Transmission extends EventTarget {
   }
 
   _dispatchSelectionChanged() {
-    const selected = [];
     const nonselected = [];
-
+    const selected = [];
     for (const torrent of Object.values(this._torrents)) {
       if (this._selectedTorrentIds.has(torrent.getId())) {
         selected.push(torrent);
