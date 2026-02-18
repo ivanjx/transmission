@@ -3,7 +3,7 @@ name: cicd
 on:
   workflow_dispatch:
   push:
-    branches: [ mine ]
+    branches: [ 4.0.6 ]
     paths:
       - 'libtransmission/**'
       - 'cli/**'
