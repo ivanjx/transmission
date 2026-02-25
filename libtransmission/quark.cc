@@ -216,6 +216,7 @@ auto constexpr MyStatic = std::array<std::u8string_view, TR_N_KEYS>{
     u8"from_ltep"sv, // rpc
     u8"from_pex"sv, // rpc
     u8"from_tracker"sv, // rpc
+    u8"gateway-address"sv, // tr_session::Settings
     u8"gateway_address"sv, // tr_session::Settings
     u8"group"sv, // .resume, rpc
     u8"group-get"sv, // rpc
