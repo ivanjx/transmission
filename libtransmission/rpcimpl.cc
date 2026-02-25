@@ -2381,17 +2381,6 @@ using SessionAccessors = std::pair<SessionGetter, SessionSetter>;
         });
 
     map.try_emplace(
-        TR_KEY_peer_limit_global_seeding,
-        [](tr_session const& src) -> tr_variant { return src.peerLimitGlobalSeeding(); },
-        [](tr_session& tgt, tr_variant const& src, ErrorInfo& /*err*/)
-        {
-            if (auto const val = src.value_if<int64_t>())
-            {
-                tr_sessionSetPeerLimitGlobalSeeding(&tgt, *val);
-            }
-        });
-
-    map.try_emplace(
         TR_KEY_peer_port,
         [](tr_session const& src) -> tr_variant { return src.advertisedPeerPort().host(); },
         [](tr_session& tgt, tr_variant const& src, ErrorInfo& /*err*/)

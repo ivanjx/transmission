@@ -34,7 +34,7 @@ struct ApiKey
     tr_quark legacy;
 };
 
-auto constexpr RpcKeys = std::array<ApiKey, 213U>{ {
+auto constexpr RpcKeys = std::array<ApiKey, 212U>{ {
     { .current = TR_KEY_active_torrent_count, .legacy = TR_KEY_active_torrent_count_camel_APICOMPAT },
     { .current = TR_KEY_activity_date, .legacy = TR_KEY_activity_date_camel_APICOMPAT },
     { .current = TR_KEY_added_date, .legacy = TR_KEY_added_date_camel_APICOMPAT },
@@ -140,7 +140,6 @@ auto constexpr RpcKeys = std::array<ApiKey, 213U>{ {
     { .current = TR_KEY_peer_is_interested, .legacy = TR_KEY_peer_is_interested_camel_APICOMPAT },
     { .current = TR_KEY_peer_limit, .legacy = TR_KEY_peer_limit_kebab_APICOMPAT },
     { .current = TR_KEY_peer_limit_global, .legacy = TR_KEY_peer_limit_global_kebab_APICOMPAT },
-    { .current = TR_KEY_peer_limit_global_seeding, .legacy = TR_KEY_peer_limit_global_seeding_kebab_APICOMPAT },
     { .current = TR_KEY_peer_limit_per_torrent, .legacy = TR_KEY_peer_limit_per_torrent_kebab_APICOMPAT },
     { .current = TR_KEY_peer_port, .legacy = TR_KEY_peer_port_kebab_APICOMPAT },
     { .current = TR_KEY_peer_port_random_on_start, .legacy = TR_KEY_peer_port_random_on_start_kebab_APICOMPAT },
@@ -253,7 +252,7 @@ auto constexpr RpcKeys = std::array<ApiKey, 213U>{ {
     { .current = TR_KEY_torrent_verify, .legacy = TR_KEY_torrent_verify_kebab_APICOMPAT },
 } };
 
-auto constexpr SessionKeys = std::array<ApiKey, 140U>{ {
+auto constexpr SessionKeys = std::array<ApiKey, 139U>{ {
     { .current = TR_KEY_activity_date, .legacy = TR_KEY_activity_date_kebab_APICOMPAT },
     { .current = TR_KEY_added_date, .legacy = TR_KEY_added_date_kebab_APICOMPAT },
     { .current = TR_KEY_alt_speed_down, .legacy = TR_KEY_alt_speed_down_kebab_APICOMPAT },
@@ -309,7 +308,6 @@ auto constexpr SessionKeys = std::array<ApiKey, 140U>{ {
     { .current = TR_KEY_open_dialog_dir, .legacy = TR_KEY_open_dialog_dir_kebab_APICOMPAT },
     { .current = TR_KEY_peer_congestion_algorithm, .legacy = TR_KEY_peer_congestion_algorithm_kebab_APICOMPAT },
     { .current = TR_KEY_peer_limit_global, .legacy = TR_KEY_peer_limit_global_kebab_APICOMPAT },
-    { .current = TR_KEY_peer_limit_global_seeding, .legacy = TR_KEY_peer_limit_global_seeding_kebab_APICOMPAT },
     { .current = TR_KEY_peer_limit_per_torrent, .legacy = TR_KEY_peer_limit_per_torrent_kebab_APICOMPAT },
     { .current = TR_KEY_peer_port, .legacy = TR_KEY_peer_port_kebab_APICOMPAT },
     { .current = TR_KEY_peer_port_random_high, .legacy = TR_KEY_peer_port_random_high_kebab_APICOMPAT },

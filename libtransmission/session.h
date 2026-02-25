@@ -1313,7 +1313,6 @@ private:
     friend void tr_sessionSetLPDEnabled(tr_session* session, bool enabled);
     friend void tr_sessionSetPaused(tr_session* session, bool is_paused);
     friend void tr_sessionSetPeerLimit(tr_session* session, uint16_t max_global_peers);
-    friend void tr_sessionSetPeerLimitGlobalSeeding(tr_session* session, uint16_t max_global_seeding_peers);
     friend void tr_sessionSetPeerLimitPerTorrent(tr_session* session, uint16_t max_peers);
     friend void tr_sessionSetPeerPort(tr_session* session, uint16_t hport);
     friend void tr_sessionSetPeerPortRandomOnStart(tr_session* session, bool random);

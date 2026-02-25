@@ -392,9 +392,6 @@ void tr_sessionSetIdleLimit(tr_session* session, uint16_t idle_minutes);
 uint16_t tr_sessionGetPeerLimit(tr_session const* session);
 void tr_sessionSetPeerLimit(tr_session* session, uint16_t max_global_peers);
 
-uint16_t tr_sessionGetPeerLimitGlobalSeeding(tr_session const* session);
-void tr_sessionSetPeerLimitGlobalSeeding(tr_session* session, uint16_t max_global_seeding_peers);
-
 uint16_t tr_sessionGetPeerLimitPerTorrent(tr_session const* session);
 void tr_sessionSetPeerLimitPerTorrent(tr_session* session, uint16_t max_peers);
 
