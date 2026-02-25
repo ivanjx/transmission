@@ -13,9 +13,8 @@
 #include <optional>
 #include <string>
 
-#include "libtransmission/transmission.h" // for tr_port_forwarding_state
-
 #include "libtransmission/net.h"
+#include "libtransmission/types.h" // for tr_port_forwarding_state
 
 namespace tr
 {

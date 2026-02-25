@@ -36,6 +36,7 @@
 #include "libtransmission/blocklist.h"
 #include "libtransmission/cache.h"
 #include "libtransmission/crypto-utils.h"
+#include "libtransmission/file-utils.h"
 #include "libtransmission/file.h"
 #include "libtransmission/ip-cache.h"
 #include "libtransmission/interned-string.h"
@@ -46,8 +47,9 @@
 #include "libtransmission/port-forwarding.h"
 #include "libtransmission/quark.h"
 #include "libtransmission/rpc-server.h"
-#include "libtransmission/session.h"
 #include "libtransmission/session-alt-speeds.h"
+#include "libtransmission/session.h"
+#include "libtransmission/string-utils.h"
 #include "libtransmission/timer-ev.h"
 #include "libtransmission/torrent.h"
 #include "libtransmission/torrent-ctor.h"
@@ -56,7 +58,7 @@
 #include "libtransmission/tr-lpd.h"
 #include "libtransmission/tr-strbuf.h"
 #include "libtransmission/tr-utp.h"
-#include "libtransmission/utils.h"
+#include "libtransmission/types.h"
 #include "libtransmission/variant.h"
 #include "libtransmission/version.h"
 #include "libtransmission/web.h"
@@ -905,6 +907,11 @@ void tr_sessionSet(tr_session* session, tr_variant const& settings)
 
 // ---
 
+std::string tr_session::Settings::get_default_download_dir()
+{
+    return tr_getDefaultDownloadDir();
+}
+
 void tr_session::Settings::fixup_from_preferred_transports()
 {
     utp_enabled = false;
@@ -1334,20 +1341,6 @@ uint16_t tr_sessionGetPeerLimitPerTorrent(tr_session const* session)
     TR_ASSERT(session != nullptr);
 
     return session->peerLimitPerTorrent();
-}
-
-void tr_sessionSetPeerLimitGlobalSeeding(tr_session* session, uint16_t max_global_seeding_peers)
-{
-    TR_ASSERT(session != nullptr);
-
-    session->settings_.peer_limit_global_seeding = max_global_seeding_peers;
-}
-
-uint16_t tr_sessionGetPeerLimitGlobalSeeding(tr_session const* session)
-{
-    TR_ASSERT(session != nullptr);
-
-    return session->peerLimitGlobalSeeding();
 }
 
 // ---

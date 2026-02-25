@@ -1284,6 +1284,12 @@ a {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .webseed-url {
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /// FILE PRIORITY BUTTONS

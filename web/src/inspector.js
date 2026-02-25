@@ -19,10 +19,7 @@ const peer_column_classes = [
   'peer-country',
 ];
 
-const webseed_column_classes = [
-  'url',
-  'speed-down'
-];
+const webseed_column_classes = ['url', 'speed-down'];
 
 export class Inspector extends EventTarget {
   // Simple cache for IP -> country code mappings
