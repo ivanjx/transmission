@@ -11,8 +11,9 @@
 #include <QRegularExpression>
 #include <QTest>
 
-#include <libtransmission/api-compat.h>
 #include <libtransmission/transmission.h>
+#include <libtransmission/api-compat.h>
+#include <libtransmission/env.h>
 
 #include "Prefs.h"
 #include "Session.h"
@@ -29,6 +30,8 @@ using Style = api_compat::Style;
 
 Q_DECLARE_METATYPE(Style)
 
+namespace
+{
 [[nodiscard]] QRegularExpression getSessionSetDownloadDirRegEx(Style const style, QString dir)
 {
     dir = QRegularExpression::escape(dir);
@@ -49,6 +52,7 @@ Q_DECLARE_METATYPE(Style)
     abort();
     return {};
 }
+} // namespace
 
 class SessionTest
     : public QObject
