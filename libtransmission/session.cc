@@ -623,11 +623,7 @@ std::vector<tr_torrent*> get_next_queued_torrents(tr_torrents& torrents, tr_dire
     num_wanted = std::min(num_wanted, std::size(candidates));
     if (num_wanted < candidates.size())
     {
-        std::partial_sort(
-            std::begin(candidates),
-            std::begin(candidates) + num_wanted,
-            std::end(candidates),
-            tr_torrent::CompareQueuePosition);
+        std::ranges::partial_sort(candidates, std::begin(candidates) + num_wanted, tr_torrent::CompareQueuePosition);
         candidates.resize(num_wanted);
     }
 
@@ -698,9 +694,9 @@ void tr_session::on_queue_timer()
         {
             tr_torrentStartNow(tor);
 
-            if (queue_start_callback_ != nullptr)
+            if (queue_start_callback_)
             {
-                queue_start_callback_(this, tor, queue_start_user_data_);
+                queue_start_callback_(tor->id());
             }
         }
     }
@@ -936,8 +932,8 @@ void tr_session::Settings::fixup_to_preferred_transports()
 {
     if (!utp_enabled)
     {
-        auto const remove_it = std::remove(std::begin(preferred_transports), std::end(preferred_transports), TR_PREFER_UTP);
-        preferred_transports.erase(remove_it, std::end(preferred_transports));
+        auto const [first, last] = std::ranges::remove(preferred_transports, TR_PREFER_UTP);
+        preferred_transports.erase(first, last);
     }
     else if (std::ranges::find(preferred_transports, TR_PREFER_UTP) == std::ranges::end(preferred_transports))
     {
@@ -947,8 +943,8 @@ void tr_session::Settings::fixup_to_preferred_transports()
 
     if (!tcp_enabled)
     {
-        auto const remove_it = std::remove(std::begin(preferred_transports), std::end(preferred_transports), TR_PREFER_TCP);
-        preferred_transports.erase(remove_it, std::end(preferred_transports));
+        auto const [first, last] = std::ranges::remove(preferred_transports, TR_PREFER_TCP);
+        preferred_transports.erase(first, last);
     }
     else if (std::ranges::find(preferred_transports, TR_PREFER_TCP) == std::ranges::end(preferred_transports))
     {
@@ -1174,13 +1170,9 @@ void tr_session::AltSpeedMediator::is_active_changed(bool is_active, tr_session_
         session->update_bandwidth(tr_direction::Up);
         session->update_bandwidth(tr_direction::Down);
 
-        if (session->alt_speed_active_changed_func_ != nullptr)
+        if (session->alt_speed_active_changed_func_)
         {
-            session->alt_speed_active_changed_func_(
-                session,
-                is_active,
-                reason == tr_session_alt_speeds::ChangeReason::User,
-                session->alt_speed_active_changed_func_user_data_);
+            session->alt_speed_active_changed_func_(is_active, reason == tr_session_alt_speeds::ChangeReason::User);
         }
     };
 
@@ -1305,12 +1297,11 @@ bool tr_sessionUsesAltSpeed(tr_session const* session)
     return session->alt_speeds_.is_active();
 }
 
-void tr_sessionSetAltSpeedFunc(tr_session* session, tr_altSpeedFunc func, void* user_data)
+void tr_sessionSetAltSpeedFunc(tr_session* session, tr_altSpeedFunc func)
 {
     TR_ASSERT(session != nullptr);
 
-    session->alt_speed_active_changed_func_ = func;
-    session->alt_speed_active_changed_func_user_data_ = user_data;
+    session->alt_speed_active_changed_func_ = std::move(func);
 }
 
 // ---
@@ -1501,10 +1492,7 @@ auto get_remaining_files(std::string_view folder, std::vector<std::string>& queu
 
     // Read .torrent first if somehow a .magnet of the same hash exists
     // Example of possible cause: https://github.com/transmission/transmission/issues/5007
-    std::stable_partition(
-        std::begin(ret),
-        std::end(ret),
-        [](std::string_view name) { return tr_strv_ends_with(name, ".torrent"sv); });
+    std::ranges::stable_partition(ret, [](std::string_view name) { return tr_strv_ends_with(name, ".torrent"sv); });
 
     return ret;
 }
@@ -1876,12 +1864,11 @@ uint16_t tr_sessionGetRPCPort(tr_session const* session)
     return session->rpc_server_ ? session->rpc_server_->port().host() : uint16_t{};
 }
 
-void tr_sessionSetRPCCallback(tr_session* session, tr_rpc_func func, void* user_data)
+void tr_sessionSetRPCCallback(tr_session* session, tr_rpc_func func)
 {
     TR_ASSERT(session != nullptr);
 
-    session->rpc_func_ = func;
-    session->rpc_func_user_data_ = user_data;
+    session->rpc_func_ = std::move(func);
 }
 
 void tr_sessionSetRPCWhitelist(tr_session* session, std::string_view const whitelist)
@@ -2098,29 +2085,29 @@ void tr_session::close_torrent_file(tr_torrent const& tor, tr_file_index_t file_
 
 // ---
 
-void tr_sessionSetQueueStartCallback(tr_session* session, void (*callback)(tr_session*, tr_torrent*, void*), void* user_data)
+void tr_sessionSetQueueStartCallback(tr_session* session, tr_session_queue_start_func callback)
 {
-    session->setQueueStartCallback(callback, user_data);
+    session->setQueueStartCallback(std::move(callback));
 }
 
-void tr_sessionSetRatioLimitHitCallback(tr_session* session, tr_session_ratio_limit_hit_func callback, void* user_data)
+void tr_sessionSetRatioLimitHitCallback(tr_session* session, tr_session_ratio_limit_hit_func callback)
 {
-    session->setRatioLimitHitCallback(callback, user_data);
+    session->setRatioLimitHitCallback(std::move(callback));
 }
 
-void tr_sessionSetIdleLimitHitCallback(tr_session* session, tr_session_idle_limit_hit_func callback, void* user_data)
+void tr_sessionSetIdleLimitHitCallback(tr_session* session, tr_session_idle_limit_hit_func callback)
 {
-    session->setIdleLimitHitCallback(callback, user_data);
+    session->setIdleLimitHitCallback(std::move(callback));
 }
 
-void tr_sessionSetMetadataCallback(tr_session* session, tr_session_metadata_func callback, void* user_data)
+void tr_sessionSetMetadataCallback(tr_session* session, tr_session_metadata_func callback)
 {
-    session->setMetadataCallback(callback, user_data);
+    session->setMetadataCallback(std::move(callback));
 }
 
-void tr_sessionSetCompletenessCallback(tr_session* session, tr_torrent_completeness_func callback, void* user_data)
+void tr_sessionSetCompletenessCallback(tr_session* session, tr_torrent_completeness_func callback)
 {
-    session->setTorrentCompletenessCallback(callback, user_data);
+    session->setTorrentCompletenessCallback(std::move(callback));
 }
 
 tr_session_stats tr_sessionGetStats(tr_session const* session)

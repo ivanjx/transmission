@@ -8,6 +8,7 @@ const current_locale = plural_rules.resolvedOptions().locale;
 const number_format = new Intl.NumberFormat(current_locale);
 
 const kilo = 1000;
+const kibi = 1024;
 const mem_formatters = [
   new Intl.NumberFormat(current_locale, {
     maximumFractionDigits: 0,
@@ -81,10 +82,29 @@ export const Formatter = {
 
     let size = bytes;
     for (const nf of mem_formatters) {
-      if (size < kilo) {
+      if (size < kibi) {
         return nf.format(size);
       }
-      size /= kilo;
+      size /= kibi;
+    }
+
+    return 'E2BIG';
+  },
+
+  bandwidth(bytes) {
+    if (bytes < 0) {
+      return 'Unknown';
+    }
+    if (bytes === 0) {
+      return 'None';
+    }
+
+    let size = bytes;
+    for (const nf of mem_formatters) {
+      if (size < kibi) {
+        return nf.format(size);
+      }
+      size /= kibi;
     }
 
     return 'E2BIG';
