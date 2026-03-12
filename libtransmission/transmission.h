@@ -322,9 +322,6 @@ void tr_sessionSetUTPEnabled(tr_session* session, bool is_enabled);
 bool tr_sessionIsLPDEnabled(tr_session const* session);
 void tr_sessionSetLPDEnabled(tr_session* session, bool is_enabled);
 
-size_t tr_sessionGetCacheLimit_MB(tr_session const* session);
-void tr_sessionSetCacheLimit_MB(tr_session* session, size_t mbytes);
-
 tr_encryption_mode tr_sessionGetEncryption(tr_session const* session);
 void tr_sessionSetEncryption(tr_session* session, tr_encryption_mode mode);
 
@@ -417,34 +414,16 @@ void tr_torrentSetPriority(tr_torrent* tor, tr_priority_t priority);
  * To bypass the queue and unconditionally start the torrent use
  * `tr_torrentStartNow()`.
  *
- * Torrents can be moved in the queue using the simple functions
- * `tr_torrentQueueMove{Top,Up,Down,Bottom}`. They can be moved to
- * arbitrary points in the queue with `tr_torrentSetQueuePosition()`.
+ * Torrents can be moved to arbitrary points in the queue with
+ * `tr_torrentSetQueuePosition()`.
  */
 
 /** @brief Like `tr_torrentStart()`, but resumes right away regardless of the queues. */
 void tr_torrentStartNow(tr_torrent* tor);
 
-/** @brief Return the queued torrent's position in the queue it's in. [0...n) */
-size_t tr_torrentGetQueuePosition(tr_torrent const* tor);
-
 /** @brief Set the queued torrent's position in the queue it's in.
  * Edge cases: `pos <= 0` moves to the front; `pos >= queue's length` moves to the back */
 void tr_torrentSetQueuePosition(tr_torrent* tor, size_t queue_position);
-
-// ---
-
-/** @brief Convenience function for moving a batch of torrents to the front of their queue(s) */
-void tr_torrentsQueueMoveTop(tr_torrent* const* torrents, size_t torrent_count);
-
-/** @brief Convenience function for moving a batch of torrents ahead one step in their queue(s) */
-void tr_torrentsQueueMoveUp(tr_torrent* const* torrents, size_t torrent_count);
-
-/** @brief Convenience function for moving a batch of torrents back one step in their queue(s) */
-void tr_torrentsQueueMoveDown(tr_torrent* const* torrents, size_t torrent_count);
-
-/** @brief Convenience function for moving a batch of torrents to the back of their queue(s) */
-void tr_torrentsQueueMoveBottom(tr_torrent* const* torrents, size_t torrent_count);
 
 // ---
 
@@ -617,12 +596,6 @@ bool tr_ctorGetPaused(tr_ctor const* ctor, tr_ctorMode mode, bool* setme_is_paus
 /** Set whether or not the torrent begins downloading/seeding when created.
   (Default: not paused) */
 void tr_ctorSetPaused(tr_ctor* ctor, tr_ctorMode mode, bool is_paused);
-
-/** @brief Set the priorities for files in a torrent */
-void tr_ctorSetFilePriorities(tr_ctor* ctor, tr_file_index_t const* files, tr_file_index_t n_files, tr_priority_t priority);
-
-/** @brief Set the download flag for files in a torrent */
-void tr_ctorSetFilesWanted(tr_ctor* ctor, tr_file_index_t const* files, tr_file_index_t n_files, bool wanted);
 
 /** @brief Get the torrent file that this ctor's metainfo came from,
            or empty if `tr_ctorSetMetainfoFromFile()` wasn't used */
