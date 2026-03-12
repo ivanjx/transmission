@@ -487,11 +487,6 @@ void tr_torrent::stop_if_seed_limit_reached()
 
 // --- Queue
 
-size_t tr_torrentGetQueuePosition(tr_torrent const* tor)
-{
-    return tor->queue_position();
-}
-
 void tr_torrentSetQueuePosition(tr_torrent* tor, size_t queue_position)
 {
     tr_return_if_fail(tr_isTorrent(tor));
@@ -499,9 +494,11 @@ void tr_torrentSetQueuePosition(tr_torrent* tor, size_t queue_position)
     tor->set_queue_position(queue_position);
 }
 
-void tr_torrentsQueueMoveTop(tr_torrent* const* torrents_in, size_t torrent_count)
+void tr_torrent::queue_move_top(std::span<tr_torrent* const> const torrents_in)
 {
-    auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
+    tr_return_if_fail(std::ranges::all_of(torrents_in, tr_isTorrent));
+
+    auto torrents = std::vector<tr_torrent*>(std::begin(torrents_in), std::end(torrents_in));
     std::ranges::sort(std::views::reverse(torrents), tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
@@ -509,9 +506,11 @@ void tr_torrentsQueueMoveTop(tr_torrent* const* torrents_in, size_t torrent_coun
     }
 }
 
-void tr_torrentsQueueMoveUp(tr_torrent* const* torrents_in, size_t torrent_count)
+void tr_torrent::queue_move_up(std::span<tr_torrent* const> const torrents_in)
 {
-    auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
+    tr_return_if_fail(std::ranges::all_of(torrents_in, tr_isTorrent));
+
+    auto torrents = std::vector<tr_torrent*>(std::begin(torrents_in), std::end(torrents_in));
     std::ranges::sort(torrents, tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
@@ -522,9 +521,11 @@ void tr_torrentsQueueMoveUp(tr_torrent* const* torrents_in, size_t torrent_count
     }
 }
 
-void tr_torrentsQueueMoveDown(tr_torrent* const* torrents_in, size_t torrent_count)
+void tr_torrent::queue_move_down(std::span<tr_torrent* const> const torrents_in)
 {
-    auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
+    tr_return_if_fail(std::ranges::all_of(torrents_in, tr_isTorrent));
+
+    auto torrents = std::vector<tr_torrent*>(std::begin(torrents_in), std::end(torrents_in));
     std::ranges::sort(std::views::reverse(torrents), tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
@@ -535,9 +536,11 @@ void tr_torrentsQueueMoveDown(tr_torrent* const* torrents_in, size_t torrent_cou
     }
 }
 
-void tr_torrentsQueueMoveBottom(tr_torrent* const* torrents_in, size_t torrent_count)
+void tr_torrent::queue_move_bottom(std::span<tr_torrent* const> const torrents_in)
 {
-    auto torrents = std::vector<tr_torrent*>(torrents_in, torrents_in + torrent_count);
+    tr_return_if_fail(std::ranges::all_of(torrents_in, tr_isTorrent));
+
+    auto torrents = std::vector<tr_torrent*>(std::begin(torrents_in), std::end(torrents_in));
     std::ranges::sort(torrents, tr_torrent::CompareQueuePosition);
     for (auto* const tor : torrents)
     {
@@ -2170,13 +2173,6 @@ void tr_torrent::on_piece_completed(tr_piece_index_t const piece)
     // bookkeeping
     set_needs_completeness_check();
 
-    // in sequential mode, flush files as soon a piece
-    // is completed to let other programs read the written data
-    if (is_sequential_download())
-    {
-        session->flush_torrent_files(id());
-    }
-
     // if this piece completes any file, invoke the fileCompleted func for it
     for (auto [file, file_end] = fpm_.file_span_for_piece(piece); file < file_end; ++file)
     {
@@ -2194,8 +2190,8 @@ void tr_torrent::on_piece_failed(tr_piece_index_t const piece)
     auto const n = piece_size(piece);
     bytes_corrupt_ += n;
     bytes_downloaded_.reduce(n);
-    got_bad_piece_(this, piece);
     set_has_piece(piece, false);
+    got_bad_piece_(this, piece);
 }
 
 void tr_torrent::on_block_received(tr_block_index_t const block)

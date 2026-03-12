@@ -248,7 +248,7 @@ void tr_rpc_idle_done(struct tr_rpc_idle_data* data, JsonRpc::Error::Code code, 
     {
         tr_torrent* tor = nullptr;
 
-        if (auto const val = var.value_if<int64_t>())
+        if (auto const val = var.value_if<tr_torrent_id_t>())
         {
             tor = torrents.get(*val);
         }
@@ -310,7 +310,7 @@ void notifyBatchQueueChange(tr_session* session, std::vector<tr_torrent*> const&
     tr_variant::Map& /*args_out*/)
 {
     auto const torrents = getTorrents(session, args_in);
-    tr_torrentsQueueMoveTop(std::data(torrents), std::size(torrents));
+    tr_torrent::queue_move_top(torrents);
     notifyBatchQueueChange(session, torrents);
     return { JsonRpc::Error::SUCCESS, {} };
 }
@@ -321,7 +321,7 @@ void notifyBatchQueueChange(tr_session* session, std::vector<tr_torrent*> const&
     tr_variant::Map& /*args_out*/)
 {
     auto const torrents = getTorrents(session, args_in);
-    tr_torrentsQueueMoveUp(std::data(torrents), std::size(torrents));
+    tr_torrent::queue_move_up(torrents);
     notifyBatchQueueChange(session, torrents);
     return { JsonRpc::Error::SUCCESS, {} };
 }
@@ -332,7 +332,7 @@ void notifyBatchQueueChange(tr_session* session, std::vector<tr_torrent*> const&
     tr_variant::Map& /*args_out*/)
 {
     auto const torrents = getTorrents(session, args_in);
-    tr_torrentsQueueMoveDown(std::data(torrents), std::size(torrents));
+    tr_torrent::queue_move_down(torrents);
     notifyBatchQueueChange(session, torrents);
     return { JsonRpc::Error::SUCCESS, {} };
 }
@@ -343,7 +343,7 @@ void notifyBatchQueueChange(tr_session* session, std::vector<tr_torrent*> const&
     tr_variant::Map& /*args_out*/)
 {
     auto const torrents = getTorrents(session, args_in);
-    tr_torrentsQueueMoveBottom(std::data(torrents), std::size(torrents));
+    tr_torrent::queue_move_bottom(torrents);
     notifyBatchQueueChange(session, torrents);
     return { JsonRpc::Error::SUCCESS, {} };
 }
@@ -1918,7 +1918,7 @@ void add_strings_from_var(std::set<std::string_view>& strings, tr_variant const&
     auto groups_vec = tr_variant::Vector{};
     for (auto const& [name, group] : session->bandwidthGroups())
     {
-        if (names.empty() || names.count(name.sv()) > 0U)
+        if (names.empty() || names.contains(name.sv()))
         {
             auto const limits = group->get_limits();
             auto group_map = tr_variant::Map{ 6U };
@@ -2193,12 +2193,12 @@ using SessionAccessors = std::pair<SessionGetter, SessionSetter>;
 
     map.try_emplace(
         TR_KEY_cache_size_mib,
-        [](tr_session const& src) -> tr_variant { return tr_sessionGetCacheLimit_MB(&src); },
+        [](tr_session const& src) -> tr_variant { return src.unused_cache_size_mbytes(); },
         [](tr_session& tgt, tr_variant const& src, ErrorInfo& /*err*/)
         {
             if (auto const val = src.value_if<int64_t>())
             {
-                tr_sessionSetCacheLimit_MB(&tgt, *val);
+                tgt.set_unused_cache_size_mbytes(*val);
             }
         });
 
