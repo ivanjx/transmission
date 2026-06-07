@@ -270,7 +270,7 @@ void tr_peer_info::update_canonical_priority()
         static_assert(std::is_same_v<std::remove_reference_t<decltype(buf[0])>, uint16_t>);
         std::ranges::sort(buf);
         std::ranges::for_each(buf, [](auto& p) { p = htons(p); });
-        canonical_priority_ = tr_crc32c(reinterpret_cast<uint8_t*>(std::data(buf)), std::size(buf) * sizeof(uint16_t));
+        canonical_priority_ = tr_crc32c(std::data(buf), std::size(buf) * sizeof(uint16_t));
         return;
     }
 
@@ -286,7 +286,7 @@ void tr_peer_info::update_canonical_priority()
     std::ranges::sort(addresses);
 
     auto buf = std::array<std::byte, tr_address::CompactAddrMaxBytes * 2U>{};
-    auto const first = std::begin(buf);
+    auto const first = std::data(buf);
     auto const second = addresses[0].to_compact(first);
     addresses[1].to_compact(second);
     TR_ASSERT(second - first == address_size);
@@ -312,7 +312,7 @@ void tr_peer_info::update_canonical_priority()
         second[i] &= std::byte{ 0x55 };
     }
 
-    canonical_priority_ = tr_crc32c(reinterpret_cast<uint8_t*>(std::data(buf)), address_size * 2U);
+    canonical_priority_ = tr_crc32c(std::data(buf), address_size * 2U);
 }
 
 #define tr_logAddDebugSwarm(swarm, msg) tr_logAddDebugTor((swarm)->tor, msg)
@@ -1344,24 +1344,19 @@ void create_bit_torrent_peer(
 } // namespace handshake_helpers
 } // namespace
 
-void tr_peerMgrAddIncoming(tr_peerMgr* manager, tr_peer_socket&& socket)
+void tr_peerMgrAddIncoming(tr_peerMgr* manager, std::shared_ptr<tr_peer_socket> socket)
 {
     using namespace handshake_helpers;
 
     auto const lock = manager->unique_lock();
 
-    if (manager->blocklists_.contains(socket.address()))
+    if (manager->blocklists_.contains(socket->address()))
     {
-        tr_logAddTrace(fmt::format("Banned IP address '{}' tried to connect to us", socket.display_name()));
-        socket.close();
+        tr_logAddTrace(fmt::format("Banned IP address '{}' tried to connect to us", socket->display_name()));
     }
-    else if (manager->incoming_handshakes.contains(socket.socket_address()))
+    else if (!manager->incoming_handshakes.contains(socket->socket_address())) // we don't have a connection to them yet...
     {
-        socket.close();
-    }
-    else // we don't have a connection to them yet...
-    {
-        auto const socket_address = socket.socket_address();
+        auto const& socket_address = socket->socket_address();
         auto* const session = manager->session;
         manager->incoming_handshakes.try_emplace(
             socket_address,
@@ -1524,7 +1519,10 @@ std::vector<tr_pex> tr_peerMgrGetPeers(tr_torrent const* tor, uint8_t address_ty
     auto pex = std::vector<tr_pex>{};
     pex.reserve(n);
 
-    std::ranges::partial_sort(infos, infos.begin() + n, CompareAtomsByUsefulness);
+    std::ranges::partial_sort(
+        infos,
+        infos.begin() + static_cast<decltype(infos)::difference_type>(n),
+        CompareAtomsByUsefulness);
     infos.resize(n);
 
     for (auto const* const info : infos)
@@ -1576,7 +1574,7 @@ int8_t tr_peerMgrPieceAvailability(tr_torrent const* tor, tr_piece_index_t piece
     }
 
     auto const& peers = tor->swarm->peers;
-    return std::count_if(std::begin(peers), std::end(peers), [piece](auto const& peer) { return peer->has_piece(piece); });
+    return static_cast<int8_t>(std::ranges::count_if(peers, [piece](auto const& peer) { return peer->has_piece(piece); }));
 }
 
 void tr_peerMgrTorrentAvailability(tr_torrent const* tor, int8_t* tab, unsigned int n_tabs)
@@ -1587,10 +1585,10 @@ void tr_peerMgrTorrentAvailability(tr_torrent const* tor, int8_t* tab, unsigned 
 
     std::fill_n(tab, n_tabs, int8_t{});
 
-    auto const interval = tor->piece_count() / static_cast<float>(n_tabs);
-    for (tr_piece_index_t i = 0; i < n_tabs; ++i)
+    auto const interval = static_cast<double>(tor->piece_count()) / static_cast<double>(n_tabs);
+    for (unsigned int i = 0; i < n_tabs; ++i)
     {
-        auto const piece = static_cast<tr_piece_index_t>(i * interval);
+        auto const piece = static_cast<tr_piece_index_t>(static_cast<double>(i) * interval);
         tab[i] = tr_peerMgrPieceAvailability(tor, piece);
     }
 }
@@ -2100,15 +2098,15 @@ auto constexpr MaxUploadIdleSecs = time_t{ 60 * 5 };
     /* disconnect if it's been too long since piece data has been transferred.
      * this is on a sliding scale based on number of available peers... */
     {
-        auto const relax_strictness_if_fewer_than_n = static_cast<size_t>(std::lround(tor->peer_limit() * 0.9));
+        auto const relax_strictness_if_fewer_than_n = std::lround(tor->peer_limit() * 0.9);
         /* if we have >= relaxIfFewerThan, strictness is 100%.
          * if we have zero connections, strictness is 0% */
-        float const strictness = peer_count >= relax_strictness_if_fewer_than_n ?
+        auto const strictness = std::cmp_greater_equal(peer_count, relax_strictness_if_fewer_than_n) ?
             1.0 :
-            peer_count / (float)relax_strictness_if_fewer_than_n;
-        auto const lo = MinUploadIdleSecs;
-        auto const hi = MaxUploadIdleSecs;
-        time_t const limit = hi - ((hi - lo) * strictness);
+            static_cast<double>(peer_count) / static_cast<double>(relax_strictness_if_fewer_than_n);
+        static constexpr auto Lo = MinUploadIdleSecs;
+        static constexpr auto Hi = MaxUploadIdleSecs;
+        auto const limit = Hi - static_cast<time_t>(static_cast<double>(Hi - Lo) * strictness);
 
         if (auto const idle_secs = info->idle_secs(now); idle_secs && *idle_secs > limit)
         {
@@ -2226,15 +2224,23 @@ void enforceSessionPeerLimit(size_t global_peer_limit, size_t global_peer_limit_
     // enforce global peer limit
     if (std::size(all_peers) > global_peer_limit)
     {
-        std::partial_sort(std::begin(all_peers), std::begin(all_peers) + global_peer_limit, std::end(all_peers), ComparePeerByMostActive);
-        std::for_each(std::begin(all_peers) + global_peer_limit, std::end(all_peers), close_peer);
+        using diff_type = decltype(all_peers)::difference_type;
+        std::ranges::partial_sort(
+            all_peers,
+            std::begin(all_peers) + static_cast<diff_type>(global_peer_limit),
+            ComparePeerByMostActive);
+        std::ranges::for_each(std::views::drop(all_peers, static_cast<diff_type>(global_peer_limit)), close_peer);
     }
 
     // enforce seeding peer limit
     if (std::size(seeding_peers) > global_peer_limit_seeding)
     {
-        std::partial_sort(std::begin(seeding_peers), std::begin(seeding_peers) + global_peer_limit_seeding, std::end(seeding_peers), ComparePeerByMostActive);
-        std::for_each(std::begin(seeding_peers) + global_peer_limit_seeding, std::end(seeding_peers), close_peer);
+        using diff_type = decltype(seeding_peers)::difference_type;
+        std::ranges::partial_sort(
+            seeding_peers,
+            std::begin(seeding_peers) + static_cast<diff_type>(global_peer_limit_seeding),
+            ComparePeerByMostActive);
+        std::ranges::for_each(std::views::drop(seeding_peers, static_cast<diff_type>(global_peer_limit_seeding)), close_peer);
     }
 }
 } // namespace disconnect_helpers
@@ -2537,7 +2543,8 @@ void get_peer_candidates(size_t global_peer_limit, size_t global_peer_limit_seed
     auto const now_msec = tr_time_msec();
 
     // leave 5% of connection slots for incoming connections -- ticket #2609
-    if (auto const max_candidates = static_cast<size_t>(global_peer_limit * 0.95); max_candidates <= tr_peerMsgs::size())
+    if (auto const max_candidates = static_cast<size_t>(static_cast<double>(global_peer_limit) * 0.95);
+        max_candidates <= tr_peerMsgs::size())
     {
         return;
     }
@@ -2591,7 +2598,7 @@ void get_peer_candidates(size_t global_peer_limit, size_t global_peer_limit_seed
             continue;
         }
 
-        for (auto const& [socket_address, peer_info] : swarm->connectable_pool)
+        for (auto const& peer_info : std::views::values(swarm->connectable_pool))
         {
             if (is_peer_candidate(tor, *peer_info, now))
             {
@@ -2602,10 +2609,9 @@ void get_peer_candidates(size_t global_peer_limit, size_t global_peer_limit_seed
 
     // only keep the best `max` candidates
     auto const n_keep = std::min(tr_peerMgr::OutboundCandidates::requested_inline_size, std::size(candidates));
-    std::partial_sort(
-        std::begin(candidates),
-        std::begin(candidates) + n_keep,
-        std::end(candidates),
+    std::ranges::partial_sort(
+        candidates,
+        std::begin(candidates) + static_cast<decltype(candidates)::difference_type>(n_keep),
         [](auto const& a, auto const& b) { return a.score < b.score; });
     candidates.resize(n_keep);
 

@@ -42,6 +42,7 @@
 #include "libtransmission/log.h"
 #include "libtransmission/net.h"
 #include "libtransmission/peer-mgr.h"
+#include "libtransmission/peer-socket-tcp.h"
 #include "libtransmission/peer-socket.h"
 #include "libtransmission/port-forwarding.h"
 #include "libtransmission/quark.h"
@@ -196,15 +197,15 @@ tr_peer_id_t tr_peerIdInit()
 
     // remainder is randomly-generated characters
     auto constexpr Pool = std::string_view{ "0123456789abcdefghijklmnopqrstuvwxyz" };
-    auto total = 0;
+    auto total = size_t{};
     tr_rand_buffer(it, end - it);
     while (it + 1 < end)
     {
-        int const val = *it % std::size(Pool);
+        auto const val = *it % std::size(Pool);
         total += val;
         *it++ = Pool[val];
     }
-    int const val = total % std::size(Pool) != 0 ? std::size(Pool) - (total % std::size(Pool)) : 0;
+    auto const val = total % std::size(Pool) != 0 ? std::size(Pool) - (total % std::size(Pool)) : 0;
     *it = Pool[val];
 
     return peer_id;
@@ -400,7 +401,7 @@ void tr_session::onIncomingPeerConnection(tr_socket_t fd, void* vsession)
     {
         auto const& [socket_address, sock] = *incoming_info;
         tr_logAddTrace(fmt::format("new incoming connection {} ({})", sock, socket_address.display_name()));
-        session->addIncoming({ session, socket_address, sock });
+        session->addIncoming(tr_peer_socket_tcp::create(*session, socket_address, sock));
     }
 }
 
@@ -413,7 +414,12 @@ tr_session::BoundSocket::BoundSocket(
     : cb_{ cb }
     , cb_data_{ cb_data }
     , socket_{ tr_netBindTCP(addr, port, false) }
-    , ev_{ tr::evhelpers::event_new_pri2(evbase, socket_, EV_READ | EV_PERSIST, &BoundSocket::onCanRead, this) }
+    , ev_{ tr::evhelpers::event_new_pri2(
+          evbase,
+          static_cast<evutil_socket_t>(socket_),
+          EV_READ | EV_PERSIST,
+          &BoundSocket::onCanRead,
+          this) }
 {
     if (socket_ == TR_BAD_SOCKET)
     {
@@ -466,21 +472,19 @@ tr_address tr_session::bind_address(tr_address_type type) const noexcept
 tr_variant tr_sessionGetDefaultSettings()
 {
     auto ret = tr_variant::make_map();
-    ret.merge(tr_rpc_server::Settings{}.save());
-    ret.merge(tr_session_alt_speeds::Settings{}.save());
-    ret.merge(tr_session::Settings{}.save());
+    ret.merge(tr::SessionSettingsSnapshot{}.save());
 
     // TODO(5.0.0): remove this if block
+    // N.B. Because `tr::SessionSettings::load()` calls
+    // `tr::SessionSettings::fixup_to_preferred_transports()`,
+    // the defaults of `preferred_transports` essentially
+    // just repeats `utp_enabled` + `tcp_enabled`.
+    //
+    // Erase `preferred_transports` from the defaults to avoid
+    // overwriting `utp_enabled` and `tcp_enabled` that is set
+    // by the user.
     if (auto* const map = ret.get_if<tr_variant::Map>())
     {
-        // N.B. Because `tr_session::Settings::load()` calls
-        // `tr_session::Settings::fixup_to_preferred_transports()`,
-        // the defaults of `preferred_transports` essentially
-        // just repeats `utp_enabled` + `tcp_enabled`.
-        //
-        // Erase `preferred_transports` from the defaults to avoid
-        // overwriting `utp_enabled` and `tcp_enabled` that is set
-        // by the user.
         map->erase(TR_KEY_preferred_transports);
     }
 
@@ -489,10 +493,12 @@ tr_variant tr_sessionGetDefaultSettings()
 
 tr_variant tr_sessionGetSettings(tr_session const* session)
 {
-    auto settings = tr_variant::make_map();
-    settings.merge(session->alt_speeds_.settings().save());
-    settings.merge(session->rpc_server_->settings().save());
-    settings.merge(session->settings_.save());
+    auto snapshot = tr::SessionSettingsSnapshot{};
+    snapshot.session = session->settings_;
+    snapshot.alt_speeds = session->alt_speeds_.settings();
+    snapshot.rpc_server = session->rpc_server_->settings();
+
+    auto settings = tr_variant{ snapshot.save() };
     tr_variantDictAddInt(&settings, TR_KEY_message_level, tr_logGetLevel());
     return settings;
 }
@@ -629,7 +635,7 @@ namespace
 {
 namespace queue_helpers
 {
-std::vector<tr_torrent*> get_next_queued_torrents(tr_torrents& torrents, tr_direction dir, size_t num_wanted)
+std::vector<tr_torrent*> get_next_queued_torrents(tr_torrents const& torrents, tr_direction dir, size_t num_wanted)
 {
     auto candidates = torrents.get_matching([dir](auto const* const tor) { return tor->is_queued(dir); });
 
@@ -637,7 +643,10 @@ std::vector<tr_torrent*> get_next_queued_torrents(tr_torrents& torrents, tr_dire
     num_wanted = std::min(num_wanted, std::size(candidates));
     if (num_wanted < candidates.size())
     {
-        std::ranges::partial_sort(candidates, std::begin(candidates) + num_wanted, tr_torrent::CompareQueuePosition);
+        std::ranges::partial_sort(
+            candidates,
+            std::begin(candidates) + static_cast<decltype(candidates)::difference_type>(num_wanted),
+            tr_torrent::CompareQueuePosition);
         candidates.resize(num_wanted);
     }
 
@@ -726,7 +735,7 @@ void tr_session::on_save_timer()
         tor->save_resume_file();
     }
 
-    stats().save();
+    stats().save_if_dirty();
     torrent_queue().to_file();
 }
 
@@ -912,12 +921,12 @@ void tr_sessionSet(tr_session* session, tr_variant const& settings)
 
 // ---
 
-std::string tr_session::Settings::get_default_download_dir()
+std::string tr::SessionSettings::get_default_download_dir()
 {
     return tr_getDefaultDownloadDir();
 }
 
-void tr_session::Settings::fixup_from_preferred_transports()
+void tr::SessionSettings::fixup_from_preferred_transports()
 {
     utp_enabled = false;
     tcp_enabled = false;
@@ -925,10 +934,10 @@ void tr_session::Settings::fixup_from_preferred_transports()
     {
         switch (transport)
         {
-        case TR_PREFER_UTP:
+        case tr_preferred_transport::UTP:
             utp_enabled = true;
             break;
-        case TR_PREFER_TCP:
+        case tr_preferred_transport::TCP:
             tcp_enabled = true;
             break;
         default:
@@ -937,28 +946,28 @@ void tr_session::Settings::fixup_from_preferred_transports()
     }
 }
 
-void tr_session::Settings::fixup_to_preferred_transports()
+void tr::SessionSettings::fixup_to_preferred_transports()
 {
     if (!utp_enabled)
     {
-        auto const [first, last] = std::ranges::remove(preferred_transports, TR_PREFER_UTP);
+        auto const [first, last] = std::ranges::remove(preferred_transports, tr_preferred_transport::UTP);
         preferred_transports.erase(first, last);
     }
-    else if (std::ranges::find(preferred_transports, TR_PREFER_UTP) == std::ranges::end(preferred_transports))
+    else if (std::ranges::find(preferred_transports, tr_preferred_transport::UTP) == std::ranges::end(preferred_transports))
     {
         TR_ASSERT(std::size(preferred_transports) < preferred_transports.max_size());
-        preferred_transports.emplace(std::begin(preferred_transports), TR_PREFER_UTP);
+        preferred_transports.emplace(std::begin(preferred_transports), tr_preferred_transport::UTP);
     }
 
     if (!tcp_enabled)
     {
-        auto const [first, last] = std::ranges::remove(preferred_transports, TR_PREFER_TCP);
+        auto const [first, last] = std::ranges::remove(preferred_transports, tr_preferred_transport::TCP);
         preferred_transports.erase(first, last);
     }
-    else if (std::ranges::find(preferred_transports, TR_PREFER_TCP) == std::ranges::end(preferred_transports))
+    else if (std::ranges::find(preferred_transports, tr_preferred_transport::TCP) == std::ranges::end(preferred_transports))
     {
         TR_ASSERT(std::size(preferred_transports) < preferred_transports.max_size());
-        preferred_transports.emplace_back(TR_PREFER_TCP);
+        preferred_transports.emplace_back(tr_preferred_transport::TCP);
     }
 }
 
@@ -1199,7 +1208,7 @@ void tr_sessionSetSpeedLimit_KBps(tr_session* const session, tr_direction const 
 size_t tr_sessionGetSpeedLimit_KBps(tr_session const* session, tr_direction dir)
 {
     TR_ASSERT(session != nullptr);
-    return session->speed_limit(dir).count(Speed::Units::KByps);
+    return static_cast<size_t>(session->speed_limit(dir).count(Speed::Units::KByps));
 }
 
 void tr_sessionLimitSpeed(tr_session* session, tr_direction const dir, bool limited)
@@ -1236,7 +1245,7 @@ void tr_sessionSetAltSpeed_KBps(tr_session* const session, tr_direction const di
 size_t tr_sessionGetAltSpeed_KBps(tr_session const* session, tr_direction dir)
 {
     TR_ASSERT(session != nullptr);
-    return session->alt_speeds_.speed_limit(dir).count(Speed::Units::KByps);
+    return static_cast<size_t>(session->alt_speeds_.speed_limit(dir).count(Speed::Units::KByps));
 }
 
 void tr_sessionUseAltSpeedTime(tr_session* session, bool enabled)
@@ -1550,6 +1559,7 @@ void session_load_torrents(tr_session* session, tr_ctor* ctor, std::promise<size
                 fmt::arg("count", n_torrents)));
     }
 
+    session->setTorrentsLoadedTime();
     loaded_promise->set_value(n_torrents);
 }
 } // namespace load_torrents_helpers
@@ -1565,7 +1575,6 @@ size_t tr_sessionLoadTorrents(tr_session* session, tr_ctor* ctor)
     session->run_in_session_thread(session_load_torrents, session, ctor, &loaded_promise);
     loaded_future.wait();
     auto const n_torrents = loaded_future.get();
-
     return n_torrents;
 }
 
@@ -1791,7 +1800,7 @@ bool tr_blocklistExists(tr_session const* session)
     return session->blocklists_.num_lists() > 0U;
 }
 
-size_t tr_blocklistSetContent(tr_session* session, std::string_view const content_filename)
+std::optional<size_t> tr_blocklistSetContent(tr_session* session, std::string_view const content_filename)
 {
     auto const lock = session->unique_lock();
     return session->blocklists_.update_primary_blocklist(content_filename, session->blocklist_enabled());
@@ -2009,7 +2018,7 @@ bool tr_sessionGetQueueEnabled(tr_session const* session, tr_direction dir)
     return session->queueEnabled(dir);
 }
 
-void tr_sessionSetQueueStalledMinutes(tr_session* session, int minutes)
+void tr_sessionSetQueueStalledMinutes(tr_session* session, size_t minutes)
 {
     TR_ASSERT(session != nullptr);
     TR_ASSERT(minutes > 0);
@@ -2168,7 +2177,7 @@ tr_session::tr_session(std::string_view config_dir, tr_variant const& settings_d
     save_timer_->start_repeating(SaveInterval);
 }
 
-void tr_session::addIncoming(tr_peer_socket&& socket)
+void tr_session::addIncoming(std::shared_ptr<tr_peer_socket> socket)
 {
     tr_peerMgrAddIncoming(peer_mgr_.get(), std::move(socket));
 }

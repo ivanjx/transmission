@@ -57,7 +57,10 @@ using namespace tr::Values;
 #define tr_return_if_fail(expr) \
     do \
     { \
-        if (!(expr)) \
+        if (expr) [[likely]] \
+        { \
+        } \
+        else \
         { \
             tr_logAddWarn(#expr); \
             return; \
@@ -66,7 +69,10 @@ using namespace tr::Values;
 #define tr_return_val_if_fail(expr, val) \
     do \
     { \
-        if (!(expr)) \
+        if (expr) [[likely]] \
+        { \
+        } \
+        else \
         { \
             tr_logAddWarn(#expr); \
             return val; \
@@ -204,7 +210,7 @@ bool tr_torrentGetSeedRatioBytes(tr_torrent const* tor, uint64_t* setme_left, ui
     {
         auto const uploaded = tor->bytes_uploaded_.ever();
         auto const baseline = tor->size_when_done();
-        auto const goal = baseline * *seed_ratio;
+        auto const goal = static_cast<uint64_t>(static_cast<double>(baseline) * *seed_ratio);
 
         if (setme_left != nullptr)
         {
@@ -242,7 +248,7 @@ size_t tr_torrentGetSpeedLimit_KBps(tr_torrent const* const tor, tr_direction co
 {
     tr_return_val_if_fail(tr_isTorrent(tor), {});
 
-    return tor->speed_limit(dir).count(Speed::Units::KByps);
+    return static_cast<size_t>(tor->speed_limit(dir).count(Speed::Units::KByps));
 }
 
 void tr_torrentUseSpeedLimit(tr_torrent* const tor, tr_direction const dir, bool const enabled)
@@ -470,7 +476,7 @@ void tr_torrent::stop_if_seed_limit_reached()
         session->onRatioLimitHit(id());
     }
     /* if we're seeding and reach our inactivity limit, stop the torrent */
-    else if (auto const secs_left = idle_seconds_left(tr_time()); secs_left && *secs_left <= 0U)
+    else if (auto const secs_left = idle_seconds_left(tr_time()); secs_left && *secs_left <= time_t{})
     {
         tr_logAddInfoTor(this, _("Seeding idle limit reached; pausing torrent"));
 
@@ -512,26 +518,36 @@ void tr_torrent::queue_move_up(std::span<tr_torrent* const> const torrents_in)
 
     auto torrents = std::vector<tr_torrent*>(std::begin(torrents_in), std::end(torrents_in));
     std::ranges::sort(torrents, tr_torrent::CompareQueuePosition);
-    for (auto* const tor : torrents)
+    for (auto last_consecutive_pos = tr_torrent_queue::MinQueuePosition; auto* const tor : torrents)
     {
-        if (auto const pos = tor->queue_position(); pos > tr_torrent_queue::MinQueuePosition)
+        if (auto const pos = tor->queue_position(); pos != last_consecutive_pos)
         {
             tor->set_queue_position(pos - 1U);
+        }
+        else
+        {
+            ++last_consecutive_pos;
         }
     }
 }
 
 void tr_torrent::queue_move_down(std::span<tr_torrent* const> const torrents_in)
 {
-    tr_return_if_fail(std::ranges::all_of(torrents_in, tr_isTorrent));
+    tr_return_if_fail(!torrents_in.empty() && std::ranges::all_of(torrents_in, tr_isTorrent));
 
     auto torrents = std::vector<tr_torrent*>(std::begin(torrents_in), std::end(torrents_in));
     std::ranges::sort(std::views::reverse(torrents), tr_torrent::CompareQueuePosition);
-    for (auto* const tor : torrents)
+    for (auto last_consecutive_pos =
+             torrents.front()->session->torrent_queue().size() - 1U + tr_torrent_queue::MinQueuePosition;
+         auto* const tor : torrents)
     {
-        if (auto const pos = tor->queue_position(); pos < tr_torrent_queue::MaxQueuePosition)
+        if (auto const pos = tor->queue_position(); pos != last_consecutive_pos)
         {
             tor->set_queue_position(pos + 1U);
+        }
+        else
+        {
+            --last_consecutive_pos;
         }
     }
 }
@@ -1291,10 +1307,10 @@ tr_stat tr_torrent::stats() const
     stats.piece_upload_speed = piece_upload_speed;
     stats.piece_download_speed = piece_download_speed;
 
-    stats.percent_complete = this->completion_.percent_complete();
-    stats.metadata_percent_complete = get_metadata_percent();
+    stats.percent_complete = static_cast<float>(this->completion_.percent_complete());
+    stats.metadata_percent_complete = static_cast<float>(get_metadata_percent());
 
-    stats.percent_done = this->completion_.percent_done();
+    stats.percent_done = static_cast<float>(this->completion_.percent_done());
     stats.left_until_done = this->completion_.left_until_done();
     stats.size_when_done = this->completion_.size_when_done();
 
@@ -1315,7 +1331,7 @@ tr_stat tr_torrent::stats() const
     stats.have_unchecked = this->has_total() - stats.have_valid;
     stats.desired_available = tr_peerMgrGetDesiredAvailable(this);
 
-    stats.upload_ratio = tr_getRatio(stats.uploaded_ever, this->size_when_done());
+    stats.upload_ratio = static_cast<float>(tr_getRatio(stats.uploaded_ever, this->size_when_done()));
 
     auto seed_ratio_bytes_left = uint64_t{};
     auto seed_ratio_bytes_goal = uint64_t{};
@@ -1332,7 +1348,7 @@ tr_stat tr_torrent::stats() const
         }
         else if (stats.left_until_done <= stats.desired_available || webseed_count() >= 1U)
         {
-            stats.eta = stats.left_until_done / eta_speed_byps;
+            stats.eta = static_cast<time_t>(stats.left_until_done / eta_speed_byps);
         }
     }
     else if (activity == TR_STATUS_SEED)
@@ -1341,7 +1357,7 @@ tr_stat tr_torrent::stats() const
 
         if (seed_ratio_applies)
         {
-            stats.eta = eta_speed_byps == 0U ? static_cast<time_t>(TR_ETA_UNKNOWN) : seed_ratio_bytes_left / eta_speed_byps;
+            stats.eta = eta_speed_byps == 0U ? TR_ETA_UNKNOWN : static_cast<time_t>(seed_ratio_bytes_left / eta_speed_byps);
         }
 
         if (eta_speed_byps < 1U)
@@ -1368,7 +1384,8 @@ tr_stat tr_torrent::stats() const
     }
     else
     {
-        stats.seed_ratio_percent_done = float(seed_ratio_bytes_goal - seed_ratio_bytes_left) / seed_ratio_bytes_goal;
+        stats.seed_ratio_percent_done = static_cast<float>(seed_ratio_bytes_goal - seed_ratio_bytes_left) /
+            static_cast<float>(seed_ratio_bytes_goal);
     }
 
     /* test some of the constraints */
@@ -1438,7 +1455,7 @@ tr_file_view tr_torrentFile(tr_torrent const* tor, tr_file_index_t file)
         .name = subpath.c_str(),
         .have = have,
         .length = length,
-        .progress = have >= length ? 1.0 : have / double(length),
+        .progress = have >= length ? 1.0 : static_cast<double>(have) / static_cast<double>(length),
         .beginPiece = begin,
         .endPiece = end,
         .priority = priority,
@@ -1672,7 +1689,10 @@ void tr_torrent::VerifyMediator::on_piece_checked(tr_piece_index_t const piece, 
 
     tor_->checked_pieces_.set(piece, true);
     tor_->mark_changed();
-    tor_->verify_progress_ = std::clamp(static_cast<float>(piece + 1U) / tor_->metainfo_.piece_count(), 0.0F, 1.0F);
+    tor_->verify_progress_ = std::clamp(
+        static_cast<float>(piece + 1U) / static_cast<float>(tor_->metainfo_.piece_count()),
+        0.0F,
+        1.0F);
 }
 
 // (usually called from tr_verify_worker's thread)
@@ -2345,9 +2365,9 @@ auto renameFindAffectedFiles(tr_torrent const* tor, std::string_view oldpath)
     return indices;
 }
 
-int renamePath(tr_torrent const* tor, std::string_view oldpath, std::string_view newname)
+auto renamePath(tr_torrent const* tor, std::string_view oldpath, std::string_view newname)
 {
-    int err = 0;
+    tr_error_code_t err = 0;
 
     auto const base = tor->is_done() || std::empty(tor->incomplete_dir()) ? tor->download_dir() : tor->incomplete_dir();
 
@@ -2437,7 +2457,7 @@ void tr_torrent::rename_path_in_session_thread(
 {
     using namespace rename_helpers;
 
-    auto error = 0;
+    tr_error_code_t error = 0;
 
     if (!renameArgsAreValid(this, oldpath, newname))
     {
@@ -2487,8 +2507,8 @@ void tr_torrent::rename_path_in_session_thread(
 void tr_torrent::rename_path(std::string_view oldpath, std::string_view newname, tr_torrent_rename_done_func&& callback)
 {
     this->session->run_in_session_thread(
-        [this, oldpath = std::string(oldpath), newname = std::string(newname), cb = std::move(callback)]()
-        { rename_path_in_session_thread(oldpath, newname, std::move(cb)); });
+        [this, oldpath = std::string(oldpath), newname = std::string(newname), cb = std::move(callback)]
+        { rename_path_in_session_thread(oldpath, newname, cb); });
 }
 
 void tr_torrentRenamePath(

@@ -6,6 +6,7 @@
 #pragma once
 
 #include <array>
+#include <compare>
 #include <cstddef> // size_t, std::byte
 #include <cstdint> // uint16_t, uint32_t, uint64_t
 #include <ctime> // time_t
@@ -13,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "libtransmission/values.h"
 
@@ -61,6 +63,99 @@ using tr_sha1_digest_t = std::array<std::byte, 20>;
 using tr_sha256_digest_t = std::array<std::byte, 32>;
 
 using tr_torrent_id_t = int;
+
+enum class tr_preferred_transport : uint8_t
+{
+    UTP,
+    TCP,
+};
+
+inline auto constexpr PreferredTransportCount = 2U;
+
+enum class tr_file_preallocation : uint8_t
+{
+    None,
+    Sparse,
+    Full,
+};
+
+class tr_port
+{
+public:
+    tr_port() noexcept = default;
+
+    [[nodiscard]] constexpr static tr_port from_host(uint16_t hport) noexcept
+    {
+        return tr_port{ hport };
+    }
+
+    [[nodiscard]] static tr_port from_network(uint16_t nport) noexcept;
+
+    [[nodiscard]] constexpr uint16_t host() const noexcept
+    {
+        return hport_;
+    }
+
+    [[nodiscard]] uint16_t network() const noexcept;
+
+    constexpr void set_host(uint16_t hport) noexcept
+    {
+        hport_ = hport;
+    }
+
+    [[nodiscard]] static std::pair<tr_port, std::byte const*> from_compact(std::byte const* compact) noexcept;
+
+    [[nodiscard]] constexpr auto operator<=>(tr_port const& that) const noexcept
+    {
+        return hport_ <=> that.hport_;
+    }
+
+    [[nodiscard]] constexpr auto operator==(tr_port const& that) const noexcept
+    {
+        return (*this <=> that) == 0;
+    }
+
+    [[nodiscard]] constexpr auto empty() const noexcept
+    {
+        return hport_ == 0;
+    }
+
+    constexpr void clear() noexcept
+    {
+        hport_ = 0;
+    }
+
+    static auto constexpr CompactPortBytes = 2U;
+
+private:
+    explicit constexpr tr_port(uint16_t hport) noexcept
+        : hport_{ hport }
+    {
+    }
+
+    uint16_t hport_ = 0;
+};
+
+// A serializer-friendly wrapper around the DiffServ int value
+class tr_diffserv_t
+{
+public:
+    constexpr tr_diffserv_t() = default;
+
+    constexpr explicit tr_diffserv_t(int value)
+        : value_{ value }
+    {
+    }
+
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    [[nodiscard]] constexpr operator int() const noexcept
+    {
+        return value_;
+    }
+
+private:
+    int value_ = 0x04;
+};
 
 using tr_tracker_id_t = uint32_t;
 
@@ -259,6 +354,16 @@ struct tr_block_span_t
 
 struct tr_byte_span_t
 {
+    [[nodiscard]] constexpr bool is_valid() const noexcept
+    {
+        return begin <= end;
+    }
+
+    [[nodiscard]] constexpr auto size() const noexcept
+    {
+        return end - begin;
+    }
+
     uint64_t begin;
     uint64_t end;
 };
@@ -333,12 +438,12 @@ struct tr_peer_stat
 /** @brief Used by `tr_sessionGetStats()` and `tr_sessionGetCumulativeStats()` */
 struct tr_session_stats
 {
-    float ratio; /* TR_RATIO_INF, TR_RATIO_NA, or total up/down */
+    double ratio; /* TR_RATIO_INF, TR_RATIO_NA, or total up/down */
     uint64_t uploadedBytes; /* total up */
     uint64_t downloadedBytes; /* total down */
     uint64_t filesAdded; /* number of files added */
     uint64_t sessionCount; /* program started N times */
-    uint64_t secondsActive; /* how long Transmission's been running */
+    time_t secondsActive; /* how long Transmission's been running */
 };
 
 struct tr_stat
@@ -563,11 +668,11 @@ struct tr_tracker_view
     time_t lastScrapeTime = {}; // if hasScraped, when the latest scrape reply was received
     time_t nextScrapeTime = {}; // if scrapeState == TR_TRACKER_WAITING, time of next scrape
 
-    int downloadCount = {}; // number of times this torrent's been downloaded, or -1 if unknown
-    int lastAnnouncePeerCount = {}; // if hasAnnounced, the number of peers the tracker gave us
-    int leecherCount = {}; // number of leechers the tracker knows of, or -1 if unknown
-    int seederCount = {}; // number of seeders the tracker knows of, or -1 if unknown
-    int downloader_count = {}; // number of downloaders (BEP-21) the tracker knows of, or -1 if unknown
+    int64_t downloadCount = {}; // number of times this torrent's been downloaded, or -1 if unknown
+    size_t lastAnnouncePeerCount = {}; // if hasAnnounced, the number of peers the tracker gave us
+    int64_t leecherCount = {}; // number of leechers the tracker knows of, or -1 if unknown
+    int64_t seederCount = {}; // number of seeders the tracker knows of, or -1 if unknown
+    int64_t downloader_count = {}; // number of downloaders (BEP-21) the tracker knows of, or -1 if unknown
 
     size_t tier = {}; // which tier this tracker is in
     tr_tracker_id_t id = {}; // unique transmission-generated ID for use in libtransmission API

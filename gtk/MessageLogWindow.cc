@@ -46,8 +46,6 @@
 
 namespace
 {
-auto constexpr LoggingLevelContext = "Logging level";
-
 class MessageLogColumnsModel : public Gtk::TreeModelColumnRecord
 {
 public:
@@ -109,11 +107,11 @@ private:
     sigc::connection refresh_tag_;
 
     static auto constexpr level_names_ = std::array<std::pair<tr_log_level, char const*>, 5U>{ {
-        { TR_LOG_CRITICAL, NC_(LoggingLevelContext, "Critical") },
-        { TR_LOG_ERROR, NC_(LoggingLevelContext, "Error") },
-        { TR_LOG_WARN, NC_(LoggingLevelContext, "Warning") },
-        { TR_LOG_INFO, NC_(LoggingLevelContext, "Information") },
-        { TR_LOG_DEBUG, NC_(LoggingLevelContext, "Debug") },
+        { TR_LOG_CRITICAL, NC_("Logging level", "Critical") },
+        { TR_LOG_ERROR, NC_("Logging level", "Error") },
+        { TR_LOG_WARN, NC_("Logging level", "Warning") },
+        { TR_LOG_INFO, NC_("Logging level", "Information") },
+        { TR_LOG_DEBUG, NC_("Logging level", "Debug") },
     } };
 };
 
@@ -178,7 +176,7 @@ void MessageLogWindow::Impl::scroll_to_bottom()
 // static
 void MessageLogWindow::Impl::level_combo_init(Gtk::ComboBox* level_combo)
 {
-    auto const pref_level = static_cast<tr_log_level>(gtr_pref_int_get(TR_KEY_message_level));
+    auto const pref_level = gtr_pref_get<tr_log_level>(TR_KEY_message_level);
     auto const default_level = TR_LOG_INFO;
 
     auto has_pref_level = false;
@@ -186,12 +184,12 @@ void MessageLogWindow::Impl::level_combo_init(Gtk::ComboBox* level_combo)
     items.reserve(std::size(level_names_));
     for (auto const& [level, name] : level_names_)
     {
-        items.emplace_back(g_dpgettext2(nullptr, LoggingLevelContext, name), level);
+        items.emplace_back(g_dpgettext2(nullptr, "Logging level", name), level);
         has_pref_level |= level == pref_level;
     }
 
     gtr_combo_box_set_enum(*level_combo, items);
-    gtr_combo_box_set_active_enum(*level_combo, has_pref_level ? pref_level : default_level);
+    gtr_combo_box_set_active_enum(*level_combo, has_pref_level ? *pref_level : default_level);
 }
 
 void MessageLogWindow::Impl::level_combo_changed_cb(Gtk::ComboBox* combo_box)
@@ -239,7 +237,7 @@ void MessageLogWindow::Impl::doSave(std::string const& filename)
                 level_names_,
                 [key = node->level](auto const& item) { return item.first == key; });
             auto const level_str = iter != std::ranges::end(level_names_) ?
-                Glib::ustring(g_dpgettext2(nullptr, LoggingLevelContext, iter->second)) :
+                Glib::ustring(g_dpgettext2(nullptr, "Logging level", iter->second)) :
                 Glib::ustring("???");
 
             fmt::print(stream, "{}\t{}\t{}\t{}\n", date, level_str, node->name, node->message);
@@ -499,7 +497,7 @@ MessageLogWindow::Impl::Impl(
     , store_(Gtk::ListStore::create(message_log_cols))
     , filter_(Gtk::TreeModelFilter::create(store_))
     , sort_(Gtk::TreeModelSort::create(filter_))
-    , maxLevel_(static_cast<tr_log_level>(gtr_pref_int_get(TR_KEY_message_level)))
+    , maxLevel_(gtr_pref_get<tr_log_level>(TR_KEY_message_level).value_or(tr_log_level{}))
     , refresh_tag_(
           Glib::signal_timeout().connect_seconds(
               sigc::mem_fun(*this, &Impl::onRefresh),

@@ -609,6 +609,7 @@ Torrent.Fields = {};
 Torrent.Fields.Metadata = [
   'added_date',
   'file_count',
+  'is_private',
   'name',
   'primary_mime_type',
   'total_size',
@@ -651,7 +652,6 @@ Torrent.Fields.InfoExtra = [
   'date_created',
   'files',
   'hash_string',
-  'is_private',
   'magnet_link',
   'piece_count',
   'piece_size',
