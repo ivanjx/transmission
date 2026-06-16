@@ -118,8 +118,11 @@ private:
 namespace
 {
 
-tr_log_message* myTail = nullptr;
-tr_log_message* myHead = nullptr;
+[[nodiscard]] auto& log_messages()
+{
+    static auto msgs = tr_log_messages{};
+    return msgs;
+}
 
 } // namespace
 
@@ -176,7 +179,7 @@ void MessageLogWindow::Impl::scroll_to_bottom()
 // static
 void MessageLogWindow::Impl::level_combo_init(Gtk::ComboBox* level_combo)
 {
-    auto const pref_level = gtr_pref_get<tr_log_level>(TR_KEY_message_level);
+    auto const pref_level = gtr_pref_lookup<tr_log_level>(TR_KEY_message_level);
     auto const default_level = TR_LOG_INFO;
 
     auto has_pref_level = false;
@@ -283,8 +286,7 @@ void MessageLogWindow::Impl::onSaveRequest()
 void MessageLogWindow::Impl::onClearRequest()
 {
     store_->clear();
-    tr_logFreeQueue(myHead);
-    myHead = myTail = nullptr;
+    log_messages().clear();
 }
 
 void MessageLogWindow::Impl::onPauseToggled(Gio::SimpleAction& action)
@@ -392,15 +394,19 @@ MessageLogWindow::Impl::~Impl()
 namespace
 {
 
-tr_log_message* addMessages(Glib::RefPtr<Gtk::ListStore> const& store, tr_log_message* head)
+void addLatestMessagesToStore(
+    Glib::RefPtr<Gtk::ListStore> const& store,
+    tr_log_messages const& messages,
+    size_t const n_messages)
 {
     static unsigned int sequence = 0;
-    auto const default_name = Glib::get_application_name();
 
-    while (head != nullptr && head->next != nullptr)
+    auto const default_name = Glib::get_application_name();
+    auto const total = std::size(messages);
+
+    for (auto i = total - std::min(total, n_messages); i < total; ++i)
     {
-        auto const& message = *head;
-        head = head->next;
+        auto const& message = messages[i];
 
         char const* name = !std::empty(message.name) ? message.name.c_str() : default_name.c_str();
 
@@ -424,8 +430,13 @@ tr_log_message* addMessages(Glib::RefPtr<Gtk::ListStore> const& store, tr_log_me
             gtr_warning(gstr);
         }
     }
+}
 
-    return head; /* tail */
+void addMessages(Glib::RefPtr<Gtk::ListStore> const& store, tr_log_messages& messages, tr_log_messages new_messages)
+{
+    auto const n_messages = std::size(new_messages);
+    messages.insert(messages.end(), std::make_move_iterator(new_messages.begin()), std::make_move_iterator(new_messages.end()));
+    addLatestMessagesToStore(store, messages, n_messages);
 }
 
 } // namespace
@@ -436,23 +447,7 @@ bool MessageLogWindow::Impl::onRefresh()
 
     if (!isPaused_)
     {
-        if (auto* msgs = tr_logGetQueue(); msgs != nullptr)
-        {
-            /* add the new messages and append them to the end of
-             * our persistent list */
-            tr_log_message* tail = addMessages(store_, msgs);
-
-            if (myTail != nullptr)
-            {
-                myTail->next = msgs;
-            }
-            else
-            {
-                myHead = msgs;
-            }
-
-            myTail = tail;
-        }
+        addMessages(store_, log_messages(), tr_logGetQueue());
 
         if (pinned_to_new)
         {
@@ -497,7 +492,7 @@ MessageLogWindow::Impl::Impl(
     , store_(Gtk::ListStore::create(message_log_cols))
     , filter_(Gtk::TreeModelFilter::create(store_))
     , sort_(Gtk::TreeModelSort::create(filter_))
-    , maxLevel_(gtr_pref_get<tr_log_level>(TR_KEY_message_level).value_or(tr_log_level{}))
+    , maxLevel_{ gtr_pref_get<tr_log_level>(TR_KEY_message_level) }
     , refresh_tag_(
           Glib::signal_timeout().connect_seconds(
               sigc::mem_fun(*this, &Impl::onRefresh),
@@ -531,8 +526,9 @@ MessageLogWindow::Impl::Impl(
     ***  messages
     **/
 
-    addMessages(store_, myHead);
-    onRefresh(); /* much faster to populate *before* it has listeners */
+    // cheaper to populate *before* it has listeners
+    addLatestMessagesToStore(store_, log_messages(), std::size(log_messages()));
+    onRefresh();
 
     sort_->set_sort_column(message_log_cols.sequence, TR_GTK_SORT_TYPE(ASCENDING));
     filter_->set_visible_func(sigc::mem_fun(*this, &Impl::isRowVisible));
