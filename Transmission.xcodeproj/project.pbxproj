@@ -141,7 +141,6 @@
 		A22CFCC30FC24F890009BD3E /* dht.c in Sources */ = {isa = PBXBuildFile; fileRef = A22CFCC10FC24F890009BD3E /* dht.c */; };
 		A22CFCCB0FC24FDA0009BD3E /* libdht.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A22CFCBA0FC24F710009BD3E /* libdht.a */; };
 		A22CFCCD0FC250480009BD3E /* libevent.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BE75C3490C729E9500DBEFE0 /* libevent.a */; };
-		A22F1E550E7DA8030065DB9D /* sparkle_dsa_pub.pem in Resources */ = {isa = PBXBuildFile; fileRef = A22F1E540E7DA8030065DB9D /* sparkle_dsa_pub.pem */; };
 		A231274C0D11D0B7003F9AFF /* AboutWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = A231274B0D11D0B7003F9AFF /* AboutWindow.xib */; };
 		A232F07E0EEA034A00041646 /* BonjourController.mm in Sources */ = {isa = PBXBuildFile; fileRef = A232F07D0EEA034A00041646 /* BonjourController.mm */; };
 		A233BD330D8C6585007EE7B4 /* MessageWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = A233BD320D8C6585007EE7B4 /* MessageWindow.xib */; };
@@ -404,7 +403,6 @@
 		C83B17212B7341BC00B2EAE4 /* tr-assert.cc in Sources */ = {isa = PBXBuildFile; fileRef = C1425B321EE9C5EA001DB85F /* tr-assert.cc */; };
 		C841A28129197724009F18E8 /* NSKeyedUnarchiverAdditions.mm in Sources */ = {isa = PBXBuildFile; fileRef = C841A28029197724009F18E8 /* NSKeyedUnarchiverAdditions.mm */; };
 		C843FC8429C51B9400491854 /* string-utils.mm in Sources */ = {isa = PBXBuildFile; fileRef = C843FC8329C51B9400491854 /* string-utils.mm */; };
-		C843FC8729C8B40800491854 /* VersionComparator.mm in Sources */ = {isa = PBXBuildFile; fileRef = C843FC8629C8B40800491854 /* VersionComparator.mm */; };
 		C86BCD9928228A9600F45599 /* SparkleProxy.mm in Sources */ = {isa = PBXBuildFile; fileRef = C86BCD9828228A9600F45599 /* SparkleProxy.mm */; };
 		C87369652809984200573C90 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C87369642809984200573C90 /* UserNotifications.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		C8748D8A29891EA100D9E979 /* suffixes_dafsa.h in Headers */ = {isa = PBXBuildFile; fileRef = C8748D8929891EA100D9E979 /* suffixes_dafsa.h */; };
@@ -929,7 +927,6 @@
 		A22CFCBA0FC24F710009BD3E /* libdht.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libdht.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A22CFCC00FC24F890009BD3E /* dht.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dht.h; sourceTree = "<group>"; };
 		A22CFCC10FC24F890009BD3E /* dht.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dht.c; sourceTree = "<group>"; };
-		A22F1E540E7DA8030065DB9D /* sparkle_dsa_pub.pem */ = {isa = PBXFileReference; lastKnownFileType = text; path = sparkle_dsa_pub.pem; sourceTree = "<group>"; };
 		A231274B0D11D0B7003F9AFF /* AboutWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = AboutWindow.xib; sourceTree = "<group>"; };
 		A232F07C0EEA034A00041646 /* BonjourController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BonjourController.h; sourceTree = "<group>"; };
 		A232F07D0EEA034A00041646 /* BonjourController.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = BonjourController.mm; sourceTree = "<group>"; };
@@ -1394,8 +1391,6 @@
 		C841A27F29197724009F18E8 /* NSKeyedUnarchiverAdditions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSKeyedUnarchiverAdditions.h; sourceTree = "<group>"; };
 		C841A28029197724009F18E8 /* NSKeyedUnarchiverAdditions.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NSKeyedUnarchiverAdditions.mm; sourceTree = "<group>"; };
 		C843FC8329C51B9400491854 /* string-utils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = string-utils.mm; sourceTree = "<group>"; };
-		C843FC8529C8B40800491854 /* VersionComparator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VersionComparator.h; sourceTree = "<group>"; };
-		C843FC8629C8B40800491854 /* VersionComparator.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = VersionComparator.mm; sourceTree = "<group>"; };
 		C86BCD9828228A9600F45599 /* SparkleProxy.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SparkleProxy.mm; sourceTree = "<group>"; };
 		C87369642809984200573C90 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		C8748D8929891EA100D9E979 /* suffixes_dafsa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = suffixes_dafsa.h; path = "third-party/suffixes_dafsa.h"; sourceTree = SOURCE_ROOT; };
@@ -1695,8 +1690,6 @@
 				C86BCD9828228A9600F45599 /* SparkleProxy.mm */,
 				4DF0C5AA0899190500DD8943 /* Controller.h */,
 				4DF0C5A90899190500DD8943 /* Controller.mm */,
-				C843FC8529C8B40800491854 /* VersionComparator.h */,
-				C843FC8629C8B40800491854 /* VersionComparator.mm */,
 				4DFBC2DD09C0970D00D5C571 /* Torrent.h */,
 				4DFBC2DE09C0970D00D5C571 /* Torrent.mm */,
 				A27F0F310E19AD9800B2DB97 /* TorrentGroup.h */,
@@ -1865,7 +1858,6 @@
 				A2CB38AE0E1E6896002B514C /* COPYING */,
 				4DE5CCCA0981D9BE00BE280E /* Defaults.plist */,
 				8D1107310486CEB800E47090 /* Info.plist */,
-				A22F1E540E7DA8030065DB9D /* sparkle_dsa_pub.pem */,
 				A2795C5828EFC6700002C8D9 /* public_html */,
 				089C165CFE840E0CC02AAC07 /* InfoPlist.strings */,
 				A23F50000D1D99D7002FCB97 /* MainMenu.xib */,
@@ -3227,7 +3219,6 @@
 				A233BD690D8CF2C7007EE7B4 /* StatsWindow.xib in Resources */,
 				A2D307B10D9EC9F50051FD27 /* BlocklistStatusWindow.xib in Resources */,
 				A2CB38AF0E1E6896002B514C /* COPYING in Resources */,
-				A22F1E550E7DA8030065DB9D /* sparkle_dsa_pub.pem in Resources */,
 				A215BF5C0F02EBB800350CDB /* GroupRules.xib in Resources */,
 				A209EAEC1142D294002B02D1 /* InfoActivityView.xib in Resources */,
 				A209EAED1142D294002B02D1 /* InfoGeneralView.xib in Resources */,
@@ -3564,7 +3555,6 @@
 				A2B5B4E91880665E0071A66A /* ShareTorrentFileHelper.mm in Sources */,
 				A22BAE281388040500FB022F /* NSMutableArrayAdditions.mm in Sources */,
 				A2966E8713DAF74C007B52DF /* GlobalOptionsPopoverViewController.mm in Sources */,
-				C843FC8729C8B40800491854 /* VersionComparator.mm in Sources */,
 				A234EA541453563B000F3E97 /* NSImageAdditions.mm in Sources */,
 				A2AB883E16A399A6008FAD50 /* VDKQueue.mm in Sources */,
 				4534164229B0EA8600F544C9 /* SmallTorrentCell.mm in Sources */,

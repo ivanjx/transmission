@@ -196,8 +196,6 @@ target_sources(${TR_NAME}-mac
         URLSheetWindowController.mm
         Utils.h
         Utils.mm
-        VersionComparator.h
-        VersionComparator.mm
         WebSeedTableView.h
         WebSeedTableView.mm)
 
@@ -218,7 +216,6 @@ set(XIB_FILES
 set(RESOURCES
     Defaults.plist
     Credits.rtf
-    sparkle_dsa_pub.pem
     ../COPYING
     Images/TransmissionDocument.icns)
 source_group(Resources
